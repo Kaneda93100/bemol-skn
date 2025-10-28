@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<AEROWT>
+  <AEROsimulation>
+    <FARM>
+      <ROTOR rotor_ref="Mexico">
+        <INSTALLATION x="0" y="0" z="0" />
+        <OPERATION omega="44.516367900000" motion="MOVING" />
+      </ROTOR>
+    </FARM>
+    <AERO>
+      <WIND>
+        <WIND_3D ux="25.040456943750" uy="0.000000000000" uz="0.000000000000" />
+      </WIND>
+      <MODEL>
+        <MODEL_PARAMETERS file="aerodeep.xml" dll="" />
+      </MODEL>
+      <ROTORS_REF file="rotor.xml">
+        <ROTOR_HAWT name="Mexico" rotation="CLOCK" wind="UPWIND">
+          <FLUID density="1.198000000000" />
+          <HAWT_PARAMETERS>
+            <PRECONE_ANGLE value="0.000000000000" unit="degre" />
+            <TILT_ANGLE value="0.000000000000" unit="degre" />
+          </HAWT_PARAMETERS>
+          <BLADES_PARAMETERS number="3" length="2.040000000000" pitch="0.040143000000" azimuth="0.000000000000" direction="DIRECT" />
+          <TOWER_PARAMETERS elevation="3.000000000000" />
+          <HUB_PARAMETERS deport="0.500000000000" radius="0.210000000000" yawAngle="0.08726646259971647" />
+          <BLADE>
+            <ELEMENT center="0.000951325477" twist="-0.000000000000" offset="0.000000000000" />
+            <ELEMENT center="0.004749387224" twist="-0.000000000000" offset="0.000000000000" />
+            <ELEMENT center="0.012316605175" twist="-0.000000000000" offset="0.000000000000" />
+            <ELEMENT center="0.023595388231" twist="-0.000000000000" offset="0.000000000000" />
+            <ELEMENT center="0.038499898044" twist="-0.020651884783" offset="0.000000000000" />
+            <ELEMENT center="0.056916702295" twist="-0.078128471938" offset="0.000000000000" />
+            <ELEMENT center="0.078705637982" twist="-0.146129067698" offset="0.000000000000" />
+            <ELEMENT center="0.103700878148" twist="-0.224136146469" offset="0.000000000000" />
+            <ELEMENT center="0.131712193924" twist="-0.282127641535" offset="0.000000000000" />
+            <ELEMENT center="0.162526402282" twist="-0.265221447220" offset="0.000000000000" />
+            <ELEMENT center="0.195908988491" twist="-0.237336891820" offset="0.000000000000" />
+            <ELEMENT center="0.231605890912" twist="-0.208805122286" offset="0.000000000000" />
+            <ELEMENT center="0.269345434565" twist="-0.184248179038" offset="0.000000000000" />
+            <ELEMENT center="0.308840398733" twist="-0.160114686817" offset="0.000000000000" />
+            <ELEMENT center="0.349790202893" twist="-0.140430358905" offset="0.000000000000" />
+            <ELEMENT center="0.391883194308" twist="-0.126646840386" offset="0.000000000000" />
+            <ELEMENT center="0.434799019896" twist="-0.114945357839" offset="0.000000000000" />
+            <ELEMENT center="0.478211064313" twist="-0.103108575648" offset="0.000000000000" />
+            <ELEMENT center="0.521788935687" twist="-0.091226578872" offset="0.000000000000" />
+            <ELEMENT center="0.565200980104" twist="-0.082292558299" offset="0.000000000000" />
+            <ELEMENT center="0.608116805692" twist="-0.072064285286" offset="0.000000000000" />
+            <ELEMENT center="0.650209797107" twist="-0.065515381932" offset="0.000000000000" />
+            <ELEMENT center="0.691159601267" twist="-0.059423021744" offset="0.000000000000" />
+            <ELEMENT center="0.730654565435" twist="-0.053547107261" offset="0.000000000000" />
+            <ELEMENT center="0.768394109088" twist="-0.047260641151" offset="0.000000000000" />
+            <ELEMENT center="0.804091011509" twist="-0.041173029313" offset="0.000000000000" />
+            <ELEMENT center="0.837473597718" twist="-0.035476396777" offset="0.000000000000" />
+            <ELEMENT center="0.868287806076" twist="-0.030073055082" offset="0.000000000000" />
+            <ELEMENT center="0.896299121852" twist="-0.024933123905" offset="0.000000000000" />
+            <ELEMENT center="0.921294362018" twist="-0.020146412296" offset="0.000000000000" />
+            <ELEMENT center="0.943083297705" twist="-0.015638526069" offset="0.000000000000" />
+            <ELEMENT center="0.961500101956" twist="-0.011140749871" offset="0.000000000000" />
+            <ELEMENT center="0.976404611769" twist="-0.006935726724" offset="0.000000000000" />
+            <ELEMENT center="0.987683394825" twist="-0.003611417142" offset="0.000000000000" />
+            <ELEMENT center="0.995250612776" twist="-0.001392592685" offset="0.000000000000" />
+            <ELEMENT center="0.999048674523" twist="-0.000278943045" offset="0.000000000000" />
+          </BLADE>
+        </ROTOR_HAWT>
+      </ROTORS_REF>
+    </AERO>
+    <HYDROLOAD />
+    <AZIMUTH_simulation dAzimuth="5.000000000000" nTours="5.010000000000" omega="44.516367900000" />
+  </AEROsimulation>
+</AEROWT>

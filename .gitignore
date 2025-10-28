@@ -1,0 +1,7 @@
+**/__pycache__/
+**/.pytest_cache/
+*_results
+images
+data_vortex_yaw_mexico
+skynet_env
+*.pt2
