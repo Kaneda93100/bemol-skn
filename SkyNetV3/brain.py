@@ -9,13 +9,12 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-from torch import nn
+from torch import nn, optim
 import csv
 import numpy as np
-
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
-from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
+from time import perf_counter
 
 
 data_type = torch.float64
@@ -117,7 +116,26 @@ class SkyNet(nn.Module) :
                 return None  
         
         
-               
+    def train_NN1(self, MAX_EPOCH = 10, LR = 1e-3,) : 
+        loss_train= []
+        loss_val = []
+        rel_error_train = []
+        rel_error_val = []
+        grad_norm = []
+        optimiser = optim.Adam(self.parameters(), lr = LR, weight_decay=1)
+        loss_func = nn.MSELoss(reduction = 'mean')
+        param_saved = [self.state_dict(), 0]
+
+        #Gestion de l'affichage 
+        step  = 1 #étape à afficher dans le terminal
+        tronc = 5 #ordre de la troncature pour err_min_train et err_min_val
+        tol = 1e-7 #seuil de tolérance pour l'erreur faite sur les données d'entraînement ET de validation
+
+        print("Début de l'entraînement\n")
+        perf_av = []
+        start = perf_counter()
+        
+        return 0          
     def save_param(self, path:str) : 
         """
         Enregistre les paramètres d'un NN à une adresse donnée en paramètre (path)

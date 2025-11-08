@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 
 files = ["rotor.xml", "simulation.xml"]
 
+l = 2.04; rhub = 0.21; R = 2.46
 with open("blade_vortex.dat", "w") as f: 
     f.write("radius	twist	chord	airfoil\n")
 
@@ -15,7 +16,7 @@ with open("blade_vortex.dat", "w") as f:
 
     Ltsr = []; chords = []; airfoils = []; twists = []
     for elem in root1.findall(".//ELEMENT"): 
-        Ltsr.append(float(elem.attrib["center"]))
+        Ltsr.append( ((float(elem.attrib["center"]))*2.04+0.21)/2.25) ## Add the hub radius
         chords.append(float(elem.attrib["chord"]))
         airfoils.append(elem.attrib["airfoil"])
 
