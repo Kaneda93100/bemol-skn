@@ -115,7 +115,7 @@ class SkyNet(nn.Module) :
                 print("Aucun jeu de paramètre n'a été trouvé. Le réseau est initialisé aléatoirement.\n")
                 return None  
         
-        
+    """
     def train_NN1(self, MAX_EPOCH = 10, LR = 1e-3,) : 
         loss_train= []
         loss_val = []
@@ -131,19 +131,48 @@ class SkyNet(nn.Module) :
         tronc = 5 #ordre de la troncature pour err_min_train et err_min_val
         tol = 1e-7 #seuil de tolérance pour l'erreur faite sur les données d'entraînement ET de validation
 
+
         print("Début de l'entraînement\n")
         perf_av = []
         start = perf_counter()
-        
+        for ep in range(MAX_EPOCH):
+            self.train()
+            
+            if ep % step == 0 :
+                print("Etape "+str(ep + 1)+" sur " + str(MAX_EPOCH) + "\n")
+            
+            loss_train_int = list()
+            rel_err_int = []
+            
+            perf_loc = []
+            for features, label in train_dataloader :
+                start_train = perf_counter()
+
+                features = features.to(device)
+                label = label.to(device)
+
+                optimiser.zero_grad()
+
+                label = label.squeeze(2).squeeze(1).type(torch.float32)
+                AI_NN = T800(features).squeeze(2).squeeze(1)
+                Ux, Uy = compute_velocity(wind = U, omega = omega,
+                                        rad = features[:,0,1], azimuth = features[:,0,0],
+                                        yaw=yaw, tilt=tiltAngle, precone=preconeAngle
+                                        )
         return 0          
-    def save_param(self, path:str) : 
+    """ 
+    
+    def save_param(self, path:str, save:bool) : 
         """
         Enregistre les paramètres d'un NN à une adresse donnée en paramètre (path)
         """
-
-        torch.save(self.state_dict(), path)
-        print("Paramétrage enregistré à l'adresse " , path)
-
+        if save == True : 
+            torch.save(self.state_dict(), path)
+            print("Paramétrage enregistré à l'adresse " , path)
+        else : 
+            print("Aucun paramètre n'a été enregistré.")
+        return 0
+    
     def forward(self,x) :
         """
         Évaluation du modèle en un point.
@@ -227,13 +256,20 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.2, pi
                                                  pin_memory = pin_memory,
                                                  shuffle = shuffle
                                                 )
+    k = 0
+    for t in train_dataloader : 
+        k+=1
+    print("Nombre d'éléments dans le train_dataloader : ", k)
 
     val_dataloader = DataLoader(TensorDataset(x_val.unsqueeze(1), y_val.unsqueeze(1)),
                                                  batch_size = batch_size,
                                                  pin_memory = pin_memory,
                                                  shuffle = shuffle
                                                 )
-    
+    k = 0 
+    for t in val_dataloader : 
+        k+=1
+    print("Nombre d'éléments dans le val_dataloader : ", k)
     return train_dataloader, val_dataloader
 
 

@@ -63,7 +63,7 @@ print("----------------------------------------")
 Pre_X, Y = brain.extract('data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv', 
                          type = type)
 
-X = torch.zeros((2592,1,3), dtype=type)
+X = torch.zeros((2592,1,4), dtype=type)
 X[:,0,0] = Pre_X[:,0,0] ## Azimuths
 X[:,0,1] = Pre_X[:,0,1] ## Radius
 
@@ -77,7 +77,7 @@ for i, position in enumerate(elements) :
                                           yaw = yaw, tilt = tiltAngle, 
                                           precone = preconeAngle)
 
-    X[i,0,2],_,_,_ = solver_yaw.solve(rotor.sections[position], X[i,0,0], pitch = pitch, 
+    _,_,X[i,0,2],X[i,0,3] = solver_yaw.solve(rotor.sections[position], X[i,0,0], pitch = pitch, ## Axial Induction --> X[:,0,2] | TangentialInduction --> X[:,0,3]
                                     velocity=velocities, angles = [yaw, tiltAngle])
 
 train_dataloader, val_dataloader = brain.data_organisation(X,Y, batch_size=72, dtype = type)
@@ -87,7 +87,7 @@ print("----------------------------------------")
 
 ## Paramètres du réseaux de neurones
 bias = True
-in_size = 3
+in_size = 4
 out_size = 1
 layer_size = 3000
 deepness = 10
@@ -100,7 +100,6 @@ T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size,
 
 path = "SkyNetV3/NN1_results/Parameters"
 path_to_save = T800.init_weight(path = path, transfert = False, random_init = False ,samp_size = 2592)
-
 
 #######################################################################
 ########################### ENTRAINEMENT ##############################
@@ -145,7 +144,7 @@ for ep in range(MAX_EPOCH):
         optimiser.zero_grad()
         label = label.squeeze(2).squeeze(1).type(torch.float32)
         
-        FN_NN = T800(features).squeeze(2).squeeze(1) ## Forces normale BEM 
+        FN_NN = T800(features).squeeze(2).squeeze(1) ## sorties BEM à Forces normales
         loss = loss_func(input=FN_NN.type(torch.float32), target=label)
         loss.backward()
         optimiser.step()
@@ -157,7 +156,7 @@ for ep in range(MAX_EPOCH):
         rel_error = numerator/denominator
         rel_err_int.append(rel_error)
     stop_train = perf_counter()
-    
+
     #Gradient du réseau
     param = list(T800.named_parameters())
     Grad = torch.zeros((0,1), device = device)
@@ -176,6 +175,7 @@ for ep in range(MAX_EPOCH):
         print("Erreur absolue : " + str(loss_train[-1]))
         print("Erreur relative : " + str(rel_error_train[-1]), "\n")
 
+ 
     T800.eval()
 
     loss_val_int = list()
@@ -276,10 +276,10 @@ for i in range(len(azs)) :
                                           azi = X[i,0,0],
                                           yaw = yaw, tilt = tiltAngle, 
                                           precone = preconeAngle)
-    FN_BEM,_,_,_ = solver_yaw.solve(solver_yawed.rotor.sections[elements[0]],
+    _,_,AI_BEM,TI_BEM = solver_yaw.solve(solver_yawed.rotor.sections[elements[0]],
                                      azs[i], pitch = pitch, velocity=velocities,
                                        angles = [yaw, tiltAngle])
-    T = torch.tensor([azs[i],rad, FN_BEM], dtype = torch.float32, device = device)
+    T = torch.tensor([azs[i],rad, AI_BEM, TI_BEM], dtype = torch.float32, device = device)
     Fn_SKN[i] = T800(T).to('cpu').detach().numpy()[0]
 Fn_Vortex = Y[25*72:26*72]
 

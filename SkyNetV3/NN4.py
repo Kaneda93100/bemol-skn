@@ -14,7 +14,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-import torch
 from torch import nn
 from torch import optim
 
@@ -102,6 +101,7 @@ for j, posi in enumerate(elements) :
                         funDrag = solver_noyaw.rotor.sections[posi].airfoil.cl,
                         )
     """
+    
     """
     f = solver_noyaw.residuals
 

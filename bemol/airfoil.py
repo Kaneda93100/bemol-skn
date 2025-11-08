@@ -28,7 +28,7 @@ class BaseAirfoil(object):
     
     """
     
-    def __init__(self,file,interpolator=interp2):
+    def __init__(self,file,interpolator=interp1):
         airfoil_file = Path(file)
         if not airfoil_file.is_file():
             raise ValueError(f'Airfoil (polar) file not found ({file}).')
