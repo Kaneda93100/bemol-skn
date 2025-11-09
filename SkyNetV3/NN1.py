@@ -1,16 +1,13 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 import torch
-from torch import nn
-from torch import optim
+from torch import nn, optim
 
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
-from torch.utils.data import TensorDataset
-
+from torch.utils.data import DataLoader, TensorDataset
 import brain
 import numpy as np
 import pandas as pd
@@ -57,13 +54,14 @@ rotor = solver_yaw.rotor
 
 ## Format dans lequel les données sont manipulées
 type = torch.float32
+samp_size = 2592 ; batch_size = 72
 
 print("Début de l'extraction des données...\n")
 print("----------------------------------------")
 Pre_X, Y = brain.extract('data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv', 
                          type = type)
 
-X = torch.zeros((2592,1,3), dtype=type)
+X = torch.zeros((samp_size,1,3), dtype=type)
 X[:,0,0] = Pre_X[:,0,0] ## Azimuths
 X[:,0,1] = Pre_X[:,0,1] ## Radius
 
@@ -80,34 +78,33 @@ for i, position in enumerate(elements) :
     X[i,0,2],_,_,_ = solver_yaw.solve(rotor.sections[position], X[i,0,0], pitch = pitch, 
                                     velocity=velocities, angles = [yaw, tiltAngle])
 
-train_dataloader, val_dataloader = brain.data_organisation(X,Y, batch_size=72, dtype = type)
+train_dataloader, val_dataloader = brain.data_organisation(X,Y, batch_size=batch_size, dtype = type)
 
-print("Données extraite avec succès et prête à l'utilisation !\n")
+print("Données extraite avec succès et prête à l'utilisation !")
 print("----------------------------------------")
 
 ## Paramètres du réseaux de neurones
 bias = True
 in_size = 3
 out_size = 1
-layer_size = 3000
-deepness = 10
+layer_size = 2500
+deepness = 20
 ReLU = nn.ReLU
 
 T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size, 
               layer_size = layer_size,
               bias = bias, deepness = deepness, type = type, device = device
               )
-
+transfert = True
 path = "SkyNetV3/NN1_results/Parameters"
-path_to_save = T800.init_weight(path = path, transfert = False, random_init = False ,samp_size = 2592)
-
+path_to_save, init_random = T800.init_weight(path = path, transfert = transfert, random_init = False, samp_size = samp_size)
 
 #######################################################################
 ########################### ENTRAINEMENT ##############################
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 100
+MAX_EPOCH = 50
 #Erreur absolue
 loss_train= []
 loss_val = []
@@ -121,8 +118,12 @@ grad_norm = []
 
 optimiser = optim.Adam(T800.parameters(), lr = LR, weight_decay=1)
 loss_func = nn.MSELoss(reduction = 'mean')
-param_saved = [T800.state_dict(), 0]
+param_saved = [T800.state_dict(), [0,0]]
 
+loss_fic = os.path.join(BASE, "NN1_results/loss.txt")
+with open(loss_fic, 'r', encoding='utf-8') as f : 
+    res = f.read().split(',')
+    param_saved[1][0] = float(res[0]) ; param_saved[1][1] = float(res[1]) 
 
 #Gestion de l'affichage 
 step  = 1 #étape à afficher dans le terminal
@@ -132,7 +133,7 @@ tol = 1e-7 #seuil de tolérance pour l'erreur faite sur les données d'entraîne
 print("Début de l'entraînement\n")
 start = perf_counter()
 for ep in range(MAX_EPOCH):
-
+    
     T800.train()    
     if ep % step == 0 :
         print("Etape "+str(ep + 1)+" sur " + str(MAX_EPOCH) + "\n")
@@ -164,7 +165,7 @@ for ep in range(MAX_EPOCH):
     for i in range(len(param)) : 
         P = param[i][1].grad.view(-1, 1)
         Grad = torch.cat((Grad, P), dim = 0)    
-    Norm_grad = torch.norm(Grad, dim = 0).detach().cpu().numpy()       
+    Norm_grad = torch.norm(Grad, dim = 0).item()    
     grad_norm.append(Norm_grad)
 
     loss_train.append(np.average(loss_train_int))
@@ -196,7 +197,7 @@ for ep in range(MAX_EPOCH):
 
         #Relative error
         numerator = np.linalg.norm((FN_NN - label).detach().cpu().numpy())
-        denominator = np.linalg.norm(label.detach().cpu().numpy())
+        denominator = np.linalg.norm(label.detach().cpu())
         rel_error = numerator/denominator
         rel_err_int.append(rel_error)
     stop_val = perf_counter()
@@ -217,28 +218,70 @@ for ep in range(MAX_EPOCH):
         break
     
     ##Récupération des meilleurs paramètres obtenus
-    if ep == 0 :
-        param_saved[1] = loss_train[-1]
-    else : 
-        if param_saved[1] >= loss_train[-1] :
+    if init_random == False :
+        if param_saved[1][0] >= loss_train[-1] and param_saved[1][1] >= loss_val[-1]:
             param_saved[0] = T800.state_dict()
-            param_saved[1] = loss_train[-1]
+            param_saved[1][0] = loss_train[-1]; param_saved[1][1] = loss_val[-1]
+            print("\n\n**************************************")
+            print("Nouveau set de paramètres enregistré.")
+            print("**************************************\n\n")
+        else :
+            T800.load_state_dict(param_saved[0])
+            print("L'epoch à été ignoré, faute de performance satisfaisante. Les anciens paramètres ont été rechargé.")
+            continue
+    else : 
+        if param_saved[1][0] >= loss_train[-1] and param_saved[1][1] >= loss_val[-1]:
+            param_saved[0] = T800.state_dict()
+            param_saved[1][0] = loss_train[-1]; param_saved[1][1] = loss_val[-1]
             print("\n\n**************************************")
             print("Nouveau set de paramètres enregistré.")
             print("**************************************\n\n")
         else : 
             continue
 
-
 ##Export des meilleurs paramètres trouvés
-T800.save_param("", False)
+T800.save_param(path_to_save, True)
+err_max_train = max(loss_train)
+err_max_val = max(loss_train)
+err_min_train = min(loss_train)
+err_min_val = min(loss_val)
+err_min_grad = min(grad_norm)
+#######################################################################
+#######################################################################
+#######################################################################
 
-fig = plt.figure(figsize=(20, 14))
 
-#Perte sur entraînement & sur validation
-plt.loglog(loss_train, color = 'r', label = 'Entraînement')
-plt.loglog(loss_val, color = 'b', label = 'Validation')
-plt.title('Evolution de la perte')
+
+
+#######################################################################
+########################### PLOT ET LOG ############################### 
+#######################################################################
+ 
+
+compteur_fic = os.path.join(BASE, "NN1_results/compteur_NN1.txt")
+compteur = 0
+with open(compteur_fic,"r", encoding='utf-8') as f :
+    compteur = int(f.read())
+compteur += 1
+with open(compteur_fic, "w", encoding='utf-8') as f :
+    f.write(str(compteur))
+
+with open(loss_fic, "w", encoding='utf-8') as f :
+    f.write(f"{param_saved[1][0]}, {param_saved[1][1]}")
+
+fig = plt.figure(figsize=(30, 30))
+
+plt.subplot(1,3,1)
+plt.loglog(loss_train, color = 'b', label = 'Entraînement')
+plt.loglog(loss_val, color = 'r', label = 'Validation')
+plt.title('Erreur absolue')
+plt.legend()
+plt.grid(True)
+
+plt.subplot(1,3,2)
+plt.loglog(rel_error_train, color = 'b', label = 'Entraînement')
+plt.loglog(rel_error_val, color = 'r', label = 'Validation')
+plt.title('Erreur relative')
 plt.legend()
 plt.grid(True)
 
@@ -267,7 +310,7 @@ forces, AI_yawed , azs = solver_yawed.cycle(
 )
 Fn_BEM = forces[:,0,0]
 
-T800.state_dict(param_saved[0])
+T800.load_state_dict(param_saved[0])
 T800.eval()
 Fn_SKN = np.zeros((72,))
 NN_FN_out = []
@@ -286,12 +329,53 @@ Fn_Vortex = Y[25*72:26*72]
 
 
 azs_vortex = np.linspace(0, 360, 72, endpoint=False)
-fig_fn = plt.figure(figsize = (20,15))
 azs = np.degrees(azs)
+plt.subplot(1,3,3)
 plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
 plt.plot(azs, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
 plt.plot(azs_vortex, Fn_Vortex[:,0,0], color = 'blue', label = 'Fn-Vortex')
 plt.legend()
 plt.grid()
 
+path_fig= os.path.join(BASE,"NN1_results/Graphiques/simulation" + str(compteur))
+plt.savefig(path_fig)
 plt.show()
+
+
+##Ecriture des performances et autres informations relatives à différents tests 
+file = os.path.join(BASE,"NN1_results/log_NN1.txt")
+fic = open(file, "a", encoding='utf-8') 
+
+fic.write("*******************************************************************************************************\n")
+fic.write("Simulation numéro " + str(compteur) + "\n")
+fic.write("Informations relatives à la simulation : \n")
+fic.write("Fonction régressée : correction de l'IFPEN \n")
+fic.write("Taille de l'échantillon prévelé : " + str(samp_size)+"\n")
+fic.write("Learning rate : " + str(LR) + "\n")
+fic.write("Nombre d'epochs parcouru : "+str(MAX_EPOCH)+"\n")
+fic.write("Taille des batchs : " + str(batch_size) + "\n")
+
+fic.write("\n\n")
+
+fic.write("Informations relatives au réseau de neurone : \n")
+fic.write("Biais ? " + str(bias)+"\n")
+fic.write("Taille de l'entrée : " + str(in_size) + "\n")
+fic.write("Taille de la sortie : " + str(out_size) + "\n")
+fic.write("Nombre de neurone par couche (le même pour toutes les couches pour l'instant) : "+str(layer_size)+"\n")
+fic.write("Nombre de couche : " + str(3)+"\n")
+fic.write("Fonctions d'activation d'activation :" + str(nn.ReLU.__name__) + "\n")
+fic.write("Fonction de perte : " + str(loss_func.__class__.__name__) + "\n")
+fic.write("Méthode d'optimisation : " + str(optimiser.__class__.__name__) + "\n")
+fic.write("Transfert ?" + str(transfert) + "\n")
+
+fic.write("\n\n")
+
+fic.write("Performances et résultat du modèle : \n")
+fic.write("GPU ou CPU ?  " + str(device) + "\n")
+fic.write(f"Plus grande perte sur l'entraînement : {err_max_train : .5e}\n")
+fic.write(f"Plus petite perte sur l'entraînement : {err_min_train : .5e}\n")
+fic.write(f"Plus grande perte sur la validation : {err_max_val : .5e}\n")
+fic.write(f"Plus petite perte sur la validation : {err_min_val : .5e} \n")
+fic.write(f"Norme de gradient minimale : {err_min_grad : .5e}\n")
+fic.write("*******************************************************************************************************\n\n\n\n\n")
+##############################################################################################################

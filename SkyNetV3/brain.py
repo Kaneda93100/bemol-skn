@@ -93,16 +93,16 @@ class SkyNet(nn.Module) :
                 self.load_state_dict(torch.load(file_param))
                 param_saved[0] = self.state_dict()
                 print("Des paramètres d'une simulation précédente ont été trouvé.\n")
-                return file_param
+                return file_param, False
             else : 
                 os.makedirs(dir_param)
                 print("Initialisation aléatoire.\n")
-                return file_param
+                return file_param, True
                 
 
         if random_init == True : 
             print("Initialisation aléatoire.\n")
-            return None
+            return None, True
         else : 
             """
             Ici, path est le chemin du jeu de paramètre que l'on veut associer au NN.
@@ -110,10 +110,10 @@ class SkyNet(nn.Module) :
             if os.path.exists(path) :
                 self.load_state_dict(torch.load(path))
                 print("Paramétrage effectué : ", path, "\n")
-                return None
+                return None, False
             else : 
                 print("Aucun jeu de paramètre n'a été trouvé. Le réseau est initialisé aléatoirement.\n")
-                return None  
+                return None, True
         
     """
     def train_NN1(self, MAX_EPOCH = 10, LR = 1e-3,) : 
@@ -271,7 +271,6 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.2, pi
         k+=1
     print("Nombre d'éléments dans le val_dataloader : ", k)
     return train_dataloader, val_dataloader
-
 
 class autodiff_interp :
     def __init__(self, x, y, device='cpu'):
