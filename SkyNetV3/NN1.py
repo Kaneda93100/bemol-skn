@@ -87,8 +87,8 @@ print("----------------------------------------")
 bias = True
 in_size = 3
 out_size = 1
-layer_size = 2500
-deepness = 20
+layer_size = 3000
+deepness = 10
 ReLU = nn.ReLU
 
 T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size, 
@@ -104,7 +104,7 @@ path_to_save, init_random = T800.init_weight(path = path, transfert = transfert,
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 50
+MAX_EPOCH = 10
 #Erreur absolue
 loss_train= []
 loss_val = []
@@ -226,8 +226,10 @@ for ep in range(MAX_EPOCH):
             print("Nouveau set de paramètres enregistré.")
             print("**************************************\n\n")
         else :
+            """
             T800.load_state_dict(param_saved[0])
             print("L'epoch à été ignoré, faute de performance satisfaisante. Les anciens paramètres ont été rechargé.")
+            """
             continue
     else : 
         if param_saved[1][0] >= loss_train[-1] and param_saved[1][1] >= loss_val[-1]:
@@ -246,6 +248,7 @@ err_max_val = max(loss_train)
 err_min_train = min(loss_train)
 err_min_val = min(loss_val)
 err_min_grad = min(grad_norm)
+
 #######################################################################
 #######################################################################
 #######################################################################
@@ -267,7 +270,7 @@ with open(compteur_fic, "w", encoding='utf-8') as f :
     f.write(str(compteur))
 
 with open(loss_fic, "w", encoding='utf-8') as f :
-    f.write(f"{param_saved[1][0]}, {param_saved[1][1]}")
+    f.write(f"{param_saved[1][0]+1000}, {param_saved[1][1]+1000}")
 
 fig = plt.figure(figsize=(30, 30))
 
@@ -361,8 +364,8 @@ fic.write("Informations relatives au réseau de neurone : \n")
 fic.write("Biais ? " + str(bias)+"\n")
 fic.write("Taille de l'entrée : " + str(in_size) + "\n")
 fic.write("Taille de la sortie : " + str(out_size) + "\n")
-fic.write("Nombre de neurone par couche (le même pour toutes les couches pour l'instant) : "+str(layer_size)+"\n")
-fic.write("Nombre de couche : " + str(3)+"\n")
+fic.write("Nombre de neurone par couche : "+str(layer_size)+"\n")
+fic.write("Nombre de couche : " + str(deepness)+"\n")
 fic.write("Fonctions d'activation d'activation :" + str(nn.ReLU.__name__) + "\n")
 fic.write("Fonction de perte : " + str(loss_func.__class__.__name__) + "\n")
 fic.write("Méthode d'optimisation : " + str(optimiser.__class__.__name__) + "\n")
