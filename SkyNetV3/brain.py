@@ -181,7 +181,6 @@ class SkyNet(nn.Module) :
             x = Layer(x)
         return x
     
-
 def extract(path:str, type = data_type) : 
     """
     Cette fonction a pour but d'extraire des données se trouvant dans un fichier .csv (celle fournies par l'IFPEN à propos du vortex).
@@ -225,6 +224,34 @@ def extract(path:str, type = data_type) :
     print("----------------------------------------")
 
     return X,Y
+
+def extract_line(path:str, num_line:int, type = data_type) :
+    """
+    Fonction qui permet d'extraire une ligne particulière d'une feuille .csv du fichier data_vortex_mexico 
+    (donc fixer un élément puis faire varier les azimuths). (À tester).
+
+    Arguments : 
+    path     --> chemin menant à la feuille 
+    num_line --> numéro de la ligne que l'on souhaite extraire
+    type     --> format dans lequel les données sont extraites
+
+    Return : 
+    X --> liste d'azimuth
+    Y --> liste d'effort associé
+    """
+    with open(path) as data : 
+        line =  csv.reader(data, delimiter=',', quotechar='|')
+
+        for i in range(23 + num_line) :
+            next(line)
+        row = next(line)
+        radius = float(row[0])
+        X = torch.tensor([np.radians(i*5) for i in range(len(row))], dtype = data_type)
+        Y = torch.tensor([float(row[i]) for i in range(1, len(row))])
+        
+        element = {'indice' : num_line, 'rayon' : radius}
+        print("Indice de l'élément :  ", element['indice'],'\n', "Rayon normalisé : ", element["rayon"])
+        return X,Y,element
 
 def extract_rad(path:str, type = data_type):
     R = []
