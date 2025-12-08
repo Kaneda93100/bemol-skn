@@ -18,7 +18,7 @@ import bemol
 results_folder = 'results/yaw_models'
 os.makedirs(results_folder,exist_ok=True)
 
-wind = 15.06
+wind = 25.04045694375
 omega = 44.5163679
 rho = 1.191
 number_revolutions = 1.0
@@ -29,7 +29,7 @@ elements = [24] # node close to the experimental data (r/R = 0.82)
 azimuthAngle = 0.0
 preconeAngle = 0.0
 tiltAngle = 0.0
-skewAngle = np.radians(30.)
+skewAngle = np.radians(5.)
 yawAngle = skewAngle
 
 mexico = bemol.rotor.mexico_vortex
@@ -51,7 +51,7 @@ for yaw_model in ('IFPEN','Dummy','PittAndPeters'):
     solver = bemol.ning.NingUncoupled(mexico,rho,corrections) ##Déclaration du solveur (par défaut)
     forces, _, azimuths = solver.cycle( ##Cycle se trouve dans bem.py
         mexico.pitchRated,wind,omega,angles=[yawAngle,tiltAngle],tStep=tStep,
-        n_phi=180,N=number_revolutions,elements=elements,
+        n_phi=72,N=number_revolutions,elements=elements,
     )
 
     azimuth_deg = np.degrees(azimuths)

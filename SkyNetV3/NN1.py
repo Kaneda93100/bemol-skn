@@ -29,7 +29,7 @@ TR = mexico_vortex.tipRadius
 ## Paramètres du modèle
 preconeAngle = torch.tensor(0.0)
 tiltAngle = torch.tensor(0.0)
-pitch = 2.3000244769936637 # Blade pitch
+pitch = np.radians(2.3000244769936637) # Blade pitch
 omega = 44.5163679 # Rotation speed
 yaw = np.radians(5) # Yaw skew angle
 U = 25.04045694375 # Incoming stream's velocity
@@ -104,7 +104,7 @@ path_to_save, init_random = T800.init_weight(path = path, transfert = transfert,
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 10
+MAX_EPOCH = 100
 #Erreur absolue
 loss_train= []
 loss_val = []

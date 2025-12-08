@@ -242,11 +242,11 @@ def extract_line(path:str, num_line:int, type = data_type) :
     with open(path) as data : 
         line =  csv.reader(data, delimiter=',', quotechar='|')
 
-        for i in range(23 + num_line) :
+        for i in range(24 + num_line) :
             next(line)
         row = next(line)
         radius = float(row[0])
-        X = torch.tensor([np.radians(i*5) for i in range(len(row))], dtype = data_type)
+        X = torch.tensor([np.radians(i*5) for i in range(len(row)-1)], dtype = data_type)
         Y = torch.tensor([float(row[i]) for i in range(1, len(row))])
         
         element = {'indice' : num_line, 'rayon' : radius}
@@ -271,12 +271,15 @@ def extract_rad(path:str, type = data_type):
 def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.2, pin_memory=False, shuffle=True) : 
 
     if type(X) == torch.Tensor and type(Y) == torch.Tensor :
-        x_train, x_val , y_train, y_val = train_test_split(X,Y, test_size = test_size)
+        x_train, x_val , y_train, y_val = train_test_split(X,Y, random_state = 0, shuffle = False, test_size = test_size)
     else : 
-        x_train, x_val , y_train, y_val = map(torch.tensor, train_test_split(X,Y, test_size = test_size))
+        x_train, x_val , y_train, y_val = map(torch.tensor, train_test_split(X,Y, random_state = 0, shuffle = True, test_size = test_size))
     
     x_train = x_train.type(dtype); x_val = x_val.type(dtype)
     y_train = y_train.type(dtype); y_val = y_val.type(dtype)
+
+    print("x_train : \n", x_train, "y_train : \n", y_train)
+    print("x_val : \n", x_val, "y_val : \n", y_val)
     
     train_dataloader = DataLoader(TensorDataset(x_train, y_train),
                                                  batch_size = batch_size,
@@ -288,7 +291,7 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.2, pi
         k+=1
     print("Nombre d'éléments dans le train_dataloader : ", k)
 
-    val_dataloader = DataLoader(TensorDataset(x_val.unsqueeze(1), y_val.unsqueeze(1)),
+    val_dataloader = DataLoader(TensorDataset(x_val, y_val),
                                                  batch_size = batch_size,
                                                  pin_memory = pin_memory,
                                                  shuffle = shuffle
