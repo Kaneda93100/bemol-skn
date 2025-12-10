@@ -34,6 +34,13 @@ yaw = np.radians(5) # Yaw skew angle
 U = 25.04045694375 # Incoming stream's velocity
 rho = 1.191 
 
+plt.rcParams['lines.linewidth'] = 1000
+plt.rcParams['axes.labelsize'] = 18
+plt.rcParams['xtick.labelsize'] = 18
+plt.rcParams['ytick.labelsize'] = 18
+plt.rcParams['axes.titlesize'] = 18
+plt.style.use('seaborn-v0_8-poster')
+
 ## Solver
 corr_noyaw = [
     bemol.secondary.HubTipLoss.Dummy,
@@ -54,7 +61,7 @@ rotor = solver_yaw.rotor
 
 type = torch.float32
 samp_size = 72 ; batch_size = 9
-index_element = 24
+index_element = 33
 X,Y, element = brain.extract_line('data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv', index_element, type = type)
 
 
@@ -71,17 +78,21 @@ for i in range(samp_size):
 labels = torch.zeros((72,1), dtype = type)
 labels[:,0] = Y
 
+train_dataloader, val_dataloader = brain.data_organisation(features,labels, batch_size=batch_size, dtype = type)
+"""
 print("Azimuths : \n", features[0,:], "\n")
 print("Efforts BEM : \n", features[1,:], "\n")
 print("Efforts Vortex : \n", labels,'\n')
 
-train_dataloader, val_dataloader = brain.data_organisation(features,labels, batch_size=batch_size, dtype = type)
+
+
 print("Affichage du train_dataloader : \n")
 for t in train_dataloader : 
     print(t,"\n")
 print("\nAffichage du val_dataloader : \n")
 for v in val_dataloader :
     print(v,"\n")
+"""
 
 ## Paramètres du réseaux de neurones
 bias = True
@@ -102,7 +113,7 @@ T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size,
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 2
+MAX_EPOCH = 60
 #Erreur absolue
 loss_train= []
 loss_val = []
@@ -203,7 +214,7 @@ for ep in range(MAX_EPOCH):
         print("Erreur absolue : "+ str(loss_val[-1]))
         print("Erreur relative : " + str(rel_error_val[-1]), "\n")
 
-
+"""
 fig1 = plt.figure(figsize=(30, 30))
 
 plt.subplot(1,2,1)
@@ -219,6 +230,7 @@ plt.loglog(rel_error_val, color = 'r', label = 'Validation')
 plt.title('Erreur relative')
 plt.legend()
 plt.grid(True)
+"""
 
 """
 Test ultime.
@@ -251,7 +263,6 @@ Fn_BEM = forces[:,0,0]
 
 T800.eval()
 Fn_SKN = np.zeros((72,))
-NN_FN_out = []
 for i in range(len(azs)) : 
     velocities = tools.calculateVelocity(wind = U, omega = omega, rad = solver_yawed.rotor.sections[element[0]].radius,
                                           azi = azs[i],
@@ -271,10 +282,15 @@ azs = np.degrees(azs)
 
 
 plt.subplot(1,1,1)
-plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
-plt.plot(azs, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
-plt.plot(azs_vortex, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
-plt.legend()
+ax = plt.gca()
+ax.spines['bottom'].set_linewidth(3)
+ax.spines['left'].set_linewidth(3)
+ax.spines['top'].set_linewidth(3)
+ax.spines['right'].set_linewidth(3)
+plt.plot(azs, Fn_BEM, marker  = 'o', markersize=20, markeredgewidth=2 , color = 'green', label = 'Fn-BEM')
+plt.plot(azs, Fn_SKN, marker = 'o',  markersize=20, markeredgewidth=2, color = 'red', label = 'Fn-SkyNet')
+plt.plot(azs_vortex, Fn_Vortex, marker = 'o', markersize=20, markeredgewidth=2, color = 'blue', label = 'Fn-Vortex')
+plt.legend(borderpad = 1.5, fontsize = 40)
 plt.grid()
 
 plt.show()

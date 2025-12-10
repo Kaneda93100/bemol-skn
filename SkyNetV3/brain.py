@@ -268,18 +268,20 @@ def extract_rad(path:str, type = data_type):
 
     return R_r
 
-def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.2, pin_memory=False, shuffle=True) : 
+def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pin_memory=False, shuffle=True) : 
 
     if type(X) == torch.Tensor and type(Y) == torch.Tensor :
-        x_train, x_val , y_train, y_val = train_test_split(X,Y, random_state = 0, shuffle = False, test_size = test_size)
+        x_train, x_val , y_train, y_val = train_test_split(X,Y, random_state = 3, shuffle = True, test_size = test_size)
     else : 
         x_train, x_val , y_train, y_val = map(torch.tensor, train_test_split(X,Y, random_state = 0, shuffle = True, test_size = test_size))
     
     x_train = x_train.type(dtype); x_val = x_val.type(dtype)
     y_train = y_train.type(dtype); y_val = y_val.type(dtype)
 
+    """
     print("x_train : \n", x_train, "y_train : \n", y_train)
     print("x_val : \n", x_val, "y_val : \n", y_val)
+    """
     
     train_dataloader = DataLoader(TensorDataset(x_train, y_train),
                                                  batch_size = batch_size,

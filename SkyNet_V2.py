@@ -25,6 +25,13 @@ sys.path.append(os.path.abspath(f'{__file__}/../..'))
 import bemol
 from bemol import data_processing
 
+plt.rcParams['lines.linewidth'] = 18
+plt.rcParams['axes.labelsize'] = 18
+plt.rcParams['xtick.labelsize'] = 18
+plt.rcParams['ytick.labelsize'] = 18
+plt.rcParams['axes.titlesize'] = 18
+plt.style.use('seaborn-v0_8-poster')
+
 sin = data_processing.sin
 tan = data_processing.tan
 PI = torch.pi
@@ -114,7 +121,7 @@ correction_none = []
 solver = bemol.ning.NingUncoupled(mexico, rho, correction_none)
 
 type = torch.float32
-n = 3
+n = 4
 samp_size = 10**n
 batch_size = 10**(n-1)
 
@@ -142,7 +149,7 @@ data_used = ["Azimuths", "Induction Axiale", "Yaw"]
 print("Calcul des données de références.\n")
 Z = torch.zeros((Azimuths.shape[0],1), dtype = type)
 for i in range(AI_va.shape[0]) : 
-    coeff = data_processing.PP(WSA = AI_va[i], AA = Azimuths[i])
+    coeff = data_processing.yaw(WSA = AI_va[i], AA = Azimuths[i])
     Z[i,0] = App(AI_va[i], coeff)
 
 x_train, x_val, z_train, z_val = train_test_split(X, Z, test_size=0.2)
@@ -307,7 +314,7 @@ err_min_val_rel = float(min(err_rel_val))
 #######################################################################
 ########################### PLOT ET LOG ############################### 
 #######################################################################
-
+"""
 ##Compter les simulations pour s'y retrouver plus facilement
 compteur_fic = "SkyNetV2_results/compteur.txt"
 compteur = 0
@@ -321,6 +328,7 @@ with open(compteur_fic, "w", encoding='utf-8') as f :
 
 
 ##Ecriture des performances et autres informations relatives à différents tests 
+
 file = "SkyNetV2_results/log_SkyNetV2.txt"
 fic = open(file, "a", encoding='utf-8')
 
@@ -363,7 +371,7 @@ fic.write(f"\t\t Erreur absolue : {err_min_val_abs:.2e}\n")
 fic.write(f"\t\t Erreur relative : {err_min_val_rel:.2e}\n")
 fic.write("*******************************************************************************************************\n\n\n\n\n")
 ##############################################################################################################
-
+"""
 #Perte sur entraînement & sur validation
 fig1 = plt.figure(figsize=(20, 14))
 
@@ -430,7 +438,7 @@ Corr_ifpen = []
 Corr_PP = []
 
 for i, az in enumerate(azs):
-    AI, treat = data_processing.AI_vanilla(solver_validation, az, yawAngle)
+    AI, treat = data_processing.compute_AI(solver_validation, az, yawAngle)
     #wakeSkewAngle = Burton(AI, yawAngle)
     
     X = torch.tensor([az, AI, yawAngle], dtype=type, device=device) 
@@ -438,13 +446,17 @@ for i, az in enumerate(azs):
     Corr_skynet.append(corr_T800) ; Corr_ifpen.append(corr_ifpen) ; Corr_PP.append(corr_PP)    
     solver_validation._axial_induction = App(corr_T800, AI)
 
-    fn, _, _, _ = data_processing.AxialTreatment(solver_validation, **treat)
+    fn, _ = data_processing.AIProcess(solver_validation, **treat)
     forces_SKN[i,0] = fn  
 
 azs_deg = np.degrees(azs)
 
 fig2 =plt.figure(figsize=(20, 14))
-
+ax = plt.gca()
+ax.spines['bottom'].set_linewidth(3)
+ax.spines['left'].set_linewidth(3)
+ax.spines['top'].set_linewidth(3)
+ax.spines['right'].set_linewidth(3)
 plt.subplot(1,2,1)
 plt.plot(azs_deg, forces_ifpen[:,0,0], color  = 'green', label = 'IFPEN')
 plt.plot(azs_deg, forces_PP[:,0,0], color = 'orange', label = 'Pitt&Pitter')
@@ -464,8 +476,9 @@ plt.title('Comparaison numérique des correctifs')
 plt.legend()
 plt.grid(True)
 
+"""
 ## Enregistrer le graphique
 saved_fig = "SkyNetV2_results/graph_SkyNetV2_run_" + str(compteur)
 plt.savefig(saved_fig)
-
+"""
 plt.show()
