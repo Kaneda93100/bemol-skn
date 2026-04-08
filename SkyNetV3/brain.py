@@ -224,11 +224,10 @@ def extract(path:str, type = data_type) :
     print("----------------------------------------")
 
     return X,Y
-
-def extract_line(path:str, num_line:int, type = data_type) :
+def extract_column(path:str, num_col:int, dtype = data_type) :
     """
-    Fonction qui permet d'extraire une ligne particulière d'une feuille .csv du fichier data_vortex_mexico 
-    (donc fixer un élément puis faire varier les azimuths). (À tester).
+    Fonction qui permet d'extraire une colonne particulière d'une feuille .csv du fichier data_vortex_mexico 
+    (donc fixer un élément puis faire varier les azimuths).
 
     Arguments : 
     path     --> chemin menant à la feuille 
@@ -242,6 +241,34 @@ def extract_line(path:str, num_line:int, type = data_type) :
     with open(path) as data : 
         line =  csv.reader(data, delimiter=',', quotechar='|')
 
+        for i in range(24) :
+            test = next(line)
+        
+        row = next(line)
+        Y = torch.zeros(34, dtype = dtype)    
+        for i in range(34) :
+            Y[i] = float(row[num_col+1])
+            row = next(line)
+
+    return Y
+def extract_line(path:str, num_line:int, type = data_type) :
+    """
+    Fonction qui permet d'extraire une ligne particulière d'une feuille .csv du fichier data_vortex_mexico 
+    (donc fixer un élément puis faire varier les azimuths).
+
+    Arguments : 
+    path     --> chemin menant à la feuille 
+    num_line --> numéro de la ligne que l'on souhaite extraire
+    type     --> format dans lequel les données sont extraites
+
+    Return : 
+    X --> liste d'azimuth
+    Y --> liste d'effort associé
+    """
+
+    with open(path) as data : 
+        line =  csv.reader(data, delimiter=',', quotechar='|')
+
         for i in range(24 + num_line) :
             next(line)
         row = next(line)
@@ -251,8 +278,8 @@ def extract_line(path:str, num_line:int, type = data_type) :
         
         element = {'indice' : num_line, 'rayon' : radius}
         print("Indice de l'élément :  ", element['indice'],'\n', "Rayon normalisé : ", element["rayon"])
-        return X,Y,element
 
+    return X,Y, element
 def extract_rad(path:str, type = data_type):
     R = []
     with open(path) as data : 
@@ -273,7 +300,7 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pi
     if type(X) == torch.Tensor and type(Y) == torch.Tensor :
         x_train, x_val , y_train, y_val = train_test_split(X,Y, random_state = 3, shuffle = True, test_size = test_size)
     else : 
-        x_train, x_val , y_train, y_val = map(torch.tensor, train_test_split(X,Y, random_state = 0, shuffle = True, test_size = test_size))
+        x_train, x_val , y_train, y_val = map(torch.tensor, train_test_split(X,Y, random_state = 3, shuffle = True, test_size = test_size))
     
     x_train = x_train.type(dtype); x_val = x_val.type(dtype)
     y_train = y_train.type(dtype); y_val = y_val.type(dtype)

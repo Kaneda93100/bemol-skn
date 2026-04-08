@@ -34,13 +34,6 @@ yaw = np.radians(5) # Yaw skew angle
 U = 25.04045694375 # Incoming stream's velocity
 rho = 1.191 
 
-plt.rcParams['lines.linewidth'] = 1000
-plt.rcParams['axes.labelsize'] = 18
-plt.rcParams['xtick.labelsize'] = 18
-plt.rcParams['ytick.labelsize'] = 18
-plt.rcParams['axes.titlesize'] = 18
-plt.style.use('seaborn-v0_8-poster')
-
 ## Solver
 corr_noyaw = [
     bemol.secondary.HubTipLoss.Dummy,
@@ -59,40 +52,47 @@ solver_noyaw = bemol.ning.NingUncoupled(mexico_vortex, rho, corr_noyaw)
 solver_yaw = bemol.ning.NingUncoupled(mexico_vortex, rho, corr_yaw)
 rotor = solver_yaw.rotor
 
-type = torch.float32
+type = torch.float64
 samp_size = 72 ; batch_size = 9
-index_element = 33
-X,Y, element = brain.extract_line('data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv', index_element, type = type)
 
-
-## Création des features et des labels
-features = torch.zeros(samp_size, 2)
-features[:,0] = X
-for i in range(samp_size):
-    velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[element['indice']].radius, azi = X[i],
-                                         yaw  = yaw, tilt = tiltAngle, precone = preconeAngle)
-    
-    features[i,1], _, _ ,_ = solver_yaw.solve(rotor.sections[element['indice']], X[i], pitch = pitch, 
-                                       velocity=velocities, angles= [yaw, tiltAngle])
-
-labels = torch.zeros((72,1), dtype = type)
-labels[:,0] = Y
-
-train_dataloader, val_dataloader = brain.data_organisation(features,labels, batch_size=batch_size, dtype = type)
 """
-print("Azimuths : \n", features[0,:], "\n")
-print("Efforts BEM : \n", features[1,:], "\n")
-print("Efforts Vortex : \n", labels,'\n')
-
-
-
-print("Affichage du train_dataloader : \n")
-for t in train_dataloader : 
-    print(t,"\n")
-print("\nAffichage du val_dataloader : \n")
-for v in val_dataloader :
-    print(v,"\n")
+Construire les features : 
+    - Une première valeur qui contient la somme des forces sur une pale calculées par la BEM.
+    - Une deuxième qui contient l'azimut (en degré) sur lequel la somme des forces est calculée.  
 """
+path = 'data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv'
+az,_,_ = brain.extract_line(path, 1)
+
+F = torch.zeros(samp_size, 2)
+for i in range(72) :
+    for_glo = 0
+    for j in range(34) : 
+        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az[i],
+                                            yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
+        
+        for_loc,_,_,_ = solver_yaw.solve(rotor.sections[j], az[i], pitch = pitch,
+                                          velocity = velocities, angles = [yaw, tiltAngle])
+        for_glo += for_loc ; for_loc = 0
+    F[i, 0] = for_glo ; F[i, 1] = az[i]
+
+"""
+Construire les labels :
+    - La force calculées par le vortex (issu de la feuille ..\ data_vortex_yaw_mexico\data_vortex_mexico_tsr004_yaw005_fn.csv)
+"""
+
+L = torch.zeros(samp_size, 1)
+for i in range(72) : 
+    Vortex_forces = brain.extract_column(path, i, dtype = type)
+    L[i] = torch.sum(Vortex_forces)
+
+train_dataloader, val_dataloader = brain.data_organisation(F,L, batch_size=batch_size, test_size = 0.8, dtype = type)
+
+k=0
+for f in train_dataloader :
+    k+=1
+k = 0
+for l in val_dataloader :
+    k+=1
 
 ## Paramètres du réseaux de neurones
 bias = True
@@ -113,7 +113,7 @@ T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size,
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 2
+MAX_EPOCH = 150
 #Erreur absolue
 loss_train= []
 loss_val = []
@@ -133,23 +133,26 @@ step  = 1 #étape à afficher dans le terminal
 tronc = 5 #ordre de la troncature pour err_min_train et err_min_val
 tol = 1e-7 #seuil de tolérance pour l'erreur faite sur les données d'entraînement ET de validation
 
-print("Début de l'entraînement\n")
+
+print("\n***Début de l'entraînement***\n")
 start = perf_counter()
 for ep in range(MAX_EPOCH):
-    
     T800.train()    
+
     if ep % step == 0 :
         print("Etape "+str(ep + 1)+" sur " + str(MAX_EPOCH) + "\n")
+    
     loss_train_int = list()
     rel_err_int = []
+    
     start_train = perf_counter()
     for features, label in train_dataloader :
-        features = features.unsqueeze(1).to(device)
-        label = label.unsqueeze(1).to(device)
+        features = features.to(device)
+        label = label.to(device)
         optimiser.zero_grad()
         
         FN_NN = T800(features) ## Forces normale BEM 
-        loss = loss_func(input=FN_NN.type(torch.float32), target=label)
+        loss = loss_func(input=FN_NN, target=label)
         loss.backward()
         optimiser.step()
         loss_train_int.append(loss.detach().cpu().numpy())
@@ -160,15 +163,6 @@ for ep in range(MAX_EPOCH):
         rel_error = numerator/denominator
         rel_err_int.append(rel_error)
     stop_train = perf_counter()
-    
-    #Gradient du réseau
-    param = list(T800.named_parameters())
-    Grad = torch.zeros((0,1), device = device)
-    for i in range(len(param)) : 
-        P = param[i][1].grad.view(-1, 1)
-        Grad = torch.cat((Grad, P), dim = 0)    
-    Norm_grad = torch.norm(Grad, dim = 0).item()    
-    grad_norm.append(Norm_grad)
 
     loss_train.append(np.average(loss_train_int))
     rel_error_train.append(np.average(rel_err_int))
@@ -176,8 +170,8 @@ for ep in range(MAX_EPOCH):
     if ep % step == 0 :
         print("ERREUR SUR ENTRAINEMENT")
         print("Temps de calcul : ", stop_train-start_train)
-        print("Erreur absolue : " + str(loss_train[-1]))
-        print("Erreur relative : " + str(rel_error_train[-1]), "\n")
+        print("Erreur absolue : " + str(format(loss_train[-1], ".1e")))
+        print("Erreur relative : " + str(format(rel_error_train[-1], ".1e")), "\n")
 
     T800.eval()
 
@@ -188,9 +182,6 @@ for ep in range(MAX_EPOCH):
 
         features = features.to(device)
         label = label.to(device)
-
-        features = features.unsqueeze(1)
-        label = label.unsqueeze(1)
         
         FN_NN = T800(features)
         loss = loss_func(input = FN_NN, target = label)
@@ -209,32 +200,11 @@ for ep in range(MAX_EPOCH):
 
 
     if ep % step == 0 :
-        print("ERREUR DE VALDIATION")
+        print("ERREUR SUR VALDIATION")
         print("Temps de calcul : ", stop_val - start_val)
-        print("Erreur absolue : "+ str(loss_val[-1]))
-        print("Erreur relative : " + str(rel_error_val[-1]), "\n")
+        print("Erreur absolue : "+ str(format(loss_val[-1], ".1e")))
+        print("Erreur relative : " + str(format(rel_error_val[-1], ".1e")), "\n")
 
-"""
-fig1 = plt.figure(figsize=(30, 30))
-
-plt.subplot(1,2,1)
-plt.loglog(loss_train, color = 'b', label = 'Entraînement')
-plt.loglog(loss_val, color = 'r', label = 'Validation')
-plt.title('Erreur absolue')
-plt.legend()
-plt.grid(True)
-
-plt.subplot(1,2,2)
-plt.loglog(rel_error_train, color = 'b', label = 'Entraînement')
-plt.loglog(rel_error_val, color = 'r', label = 'Validation')
-plt.title('Erreur relative')
-plt.legend()
-plt.grid(True)
-"""
-
-"""
-Test ultime.
-"""
 
 fig2 = plt.figure(figsize=(30,30))
 
@@ -251,7 +221,7 @@ preconeAngle = 0.0
 tiltAngle = 0.0
 skewAngle = np.radians(5.)
 yawAngle = skewAngle
-element = [index_element]
+element = [17]
 rad = solver_yawed.rotor.sections[element[0]].radius
 
 forces, AI_yawed , azs = solver_yawed.cycle(
@@ -262,35 +232,29 @@ Fn_BEM = forces[:,0,0]
 
 
 T800.eval()
-Fn_SKN = np.zeros((72,))
-for i in range(len(azs)) : 
-    velocities = tools.calculateVelocity(wind = U, omega = omega, rad = solver_yawed.rotor.sections[element[0]].radius,
-                                          azi = azs[i],
-                                          yaw = yaw, tilt = tiltAngle, 
-                                          precone = preconeAngle)
-    FN_BEM,_,_,_ = solver_yaw.solve(solver_yawed.rotor.sections[element[0]],
-                                     azs[i], pitch = pitch, velocity=velocities,
-                                       angles = [yaw, tiltAngle])
-    T = torch.tensor([azs[i], FN_BEM], dtype = torch.float32, device = device)
+Fn_SKN = np.zeros((72))
+for i in range(72) :
+    for_glo = 0
+    for j in range(34) : 
+        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az[i],
+                                            yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
+        
+        for_loc,_,_,_ = solver_yaw.solve(rotor.sections[j], az[i], pitch = pitch,
+                                          velocity = velocities, angles = [yaw, tiltAngle])
+        for_glo += for_loc ; for_loc = 0
+    T = torch.tensor([for_glo, az[i]], dtype = type, device = device)
     Fn_SKN[i] = T800(T).to('cpu').detach().numpy()[0]
-Fn_Vortex = Y
 
-
-
+_,Fn_Vortex,_ = brain.extract_line(path, element[0])
 azs_vortex = np.linspace(0, 360, 72, endpoint=False)
 azs = np.degrees(azs)
 
 
 plt.subplot(1,1,1)
-ax = plt.gca()
-ax.spines['bottom'].set_linewidth(3)
-ax.spines['left'].set_linewidth(3)
-ax.spines['top'].set_linewidth(3)
-ax.spines['right'].set_linewidth(3)
-plt.plot(azs, Fn_BEM, marker  = 'o', markersize=20, markeredgewidth=2 , color = 'green', label = 'Fn-BEM')
-plt.plot(azs, Fn_SKN, marker = 'o',  markersize=20, markeredgewidth=2, color = 'red', label = 'Fn-SkyNet')
-plt.plot(azs_vortex, Fn_Vortex, marker = 'o', markersize=20, markeredgewidth=2, color = 'blue', label = 'Fn-Vortex')
-plt.legend(borderpad = 1.5, fontsize = 40)
+plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
+plt.plot(azs, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
+plt.plot(azs_vortex, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
+plt.legend()
 plt.grid()
 
 plt.show()
