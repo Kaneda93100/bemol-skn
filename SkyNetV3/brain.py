@@ -1,8 +1,3 @@
-
-"""
-On trouvera sur ce fichier toutes les fonctions nécéssaires à la création d'un NN ainsi qu'à son entraînement.
-"""
-
 import sys
 import os
 
@@ -19,8 +14,7 @@ from time import perf_counter
 
 data_type = torch.float64
 
-
-
+## Réseau de neurones
 class SkyNet(nn.Module) : 
     bias : bool #Bias
     in_size : int #Taille des vecteurs d'entré
@@ -180,7 +174,8 @@ class SkyNet(nn.Module) :
         for Layer in self.HL :
             x = Layer(x)
         return x
-    
+
+## Extraction de données    
 def extract(path:str, type = data_type) : 
     """
     Cette fonction a pour but d'extraire des données se trouvant dans un fichier .csv (celle fournies par l'IFPEN à propos du vortex).
@@ -245,9 +240,11 @@ def extract_column(path:str, num_col:int, dtype = data_type) :
             test = next(line)
         
         row = next(line)
-        Y = torch.zeros(34, dtype = dtype)    
-        for i in range(34) :
-            Y[i] = float(row[num_col+1])
+        Y = torch.zeros(36, dtype = dtype)    
+        for i in range(36) :
+            Y[i] = float(row[num_col])
+            if(i == 35) : 
+                break
             row = next(line)
 
     return Y
@@ -331,6 +328,7 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pi
     print("Nombre d'éléments dans le val_dataloader : ", k)
     return train_dataloader, val_dataloader
 
+## Méthodes de calculs diff
 class autodiff_interp :
     def __init__(self, x, y, device='cpu'):
         self.x = torch.as_tensor(x, dtype = torch.float64, device = device)
@@ -346,7 +344,6 @@ class autodiff_interp :
         p = (self.y[id_x + 1] - self.y[id_x])/(self.x[id_x+1] - self.x[id_x])
 
         return p*(x_new - self.x[id_x+1]) + self.y[id_x+1]
-
 def dicho_ad(f,init,eps = 1e-12, iter_max = 500, device ='cpu') :
     a = init[0]
     b = init[1]
@@ -361,7 +358,6 @@ def dicho_ad(f,init,eps = 1e-12, iter_max = 500, device ='cpu') :
             break
     root = torch.tensor((a+b)/2, device = device, requires_grad = True)
     return root
-
 def brent_dekker_ad(f, a,b, type = torch.float64, eps = 1e-8, iter_max = 1000, device = 'cpu') : 
     a = torch.as_tensor(a, dtype= type, device = device); b = torch.as_tensor(b, dtype = type, device = device)
     prec = a.clone()
@@ -385,7 +381,6 @@ def brent_dekker_ad(f, a,b, type = torch.float64, eps = 1e-8, iter_max = 1000, d
     image = f(root)
     image.backward()
     return root
-
 def Newton_autodiff(f, x0:float, device = 'cpu',eps = 1e-12, iter_max = 500):
     x = torch.tensor(x0, dtype = torch.float32, device=device, requires_grad=True).unsqueeze(0)
     x.retain_grad()
@@ -414,7 +409,6 @@ def Newton_autodiff(f, x0:float, device = 'cpu',eps = 1e-12, iter_max = 500):
     y = f(x_final)
     y.backward()
     return x_final, 1/x_final.grad
-
 def print_graph(fn, f):
     if fn is None:
         return

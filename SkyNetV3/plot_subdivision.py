@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 import matplotlib.pyplot as plt
 import brain as brain
@@ -12,11 +16,11 @@ radius_input = [
           0.9952506127759884, 0.9990486745229363
         ]
 
-radius_vortex = brain.extract_rad("/home/arthur/Bureau/BEM IFPEN/BEM IFPEN/bemol-v0.0.1/data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv")
+radius_vortex = brain.extract_rad("data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv")
 
+forces = brain.extract_column("data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv", 5)
 fig1 = plt.figure(figsize=(10,10))
-plt.plot(radius_input, color = 'red', label = '.xml')
-plt.plot(radius_vortex, color = 'blue', label = '.csv')
+plt.plot(radius_vortex, forces, color = 'blue', label = 'forces at az 35deg')
 plt.legend()
 plt.grid()
 

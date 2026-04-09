@@ -57,37 +57,35 @@ samp_size = 72 ; batch_size = 9
 
 """
 Construire les features : 
-    - Une première valeur qui contient la somme des forces sur une pale calculées par la BEM.
+    - Un vecteur de taille 34 qui contient les efforts de la bem (corrigées par yaw ou non)
     - Une deuxième qui contient l'azimut (en degré) sur lequel la somme des forces est calculée.  
 """
 path = 'data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv'
 az,_,_ = brain.extract_line(path, 1)
 
-F = torch.zeros(samp_size, 2)
+F = torch.zeros((samp_size, 37))
 for i in range(72) :
-    for_glo = 0
-    for j in range(34) : 
+    forces = torch.zeros(36); 
+    for j in range(36) : 
         velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az[i],
                                             yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
         
-        for_loc,_,_,_ = solver_yaw.solve(rotor.sections[j], az[i], pitch = pitch,
+        forces[j],_,_,_ = solver_yaw.solve(rotor.sections[j], az[i], pitch = pitch,
                                           velocity = velocities, angles = [yaw, tiltAngle])
-        for_glo += for_loc ; for_loc = 0
-    F[i, 0] = for_glo ; F[i, 1] = az[i]
+    F[i, 0 : 36] = forces; F[i,36] = az[i]
 
 """
 Construire les labels :
     - La force calculées par le vortex (issu de la feuille ..\ data_vortex_yaw_mexico\data_vortex_mexico_tsr004_yaw005_fn.csv)
 """
 
-L = torch.zeros(samp_size, 1)
+L = torch.zeros(samp_size, 36)
 for i in range(72) : 
-    Vortex_forces = brain.extract_column(path, i, dtype = type)
-    L[i] = torch.sum(Vortex_forces)
+    L[i, :] = brain.extract_column(path, i, dtype = type)
 
 train_dataloader, val_dataloader = brain.data_organisation(F,L, batch_size=batch_size, test_size = 0.8, dtype = type)
 
-k=0
+k = 0
 for f in train_dataloader :
     k+=1
 k = 0
@@ -96,8 +94,8 @@ for l in val_dataloader :
 
 ## Paramètres du réseaux de neurones
 bias = True
-in_size = 2
-out_size = 1
+in_size = 37
+out_size = 36
 layer_size = 3000
 deepness = 10
 ReLU = nn.ReLU
@@ -224,36 +222,36 @@ yawAngle = skewAngle
 element = [17]
 rad = solver_yawed.rotor.sections[element[0]].radius
 
+"""
 forces, AI_yawed , azs = solver_yawed.cycle(
         mexico_vortex.pitchRated, U, omega, angles=[yawAngle, tiltAngle], tStep=0,
         n_phi=72, N=1, elements=element,
 )
 Fn_BEM = forces[:,0,0]
-
+"""
+Fn_Vortex = brain.extract_column(path, 46)
+az = 4.0143 ## correspond à 230 degré, 46 colonnes dans le tableau (normalement, il n'est pas dans le train_dataloader)
 
 T800.eval()
-Fn_SKN = np.zeros((72))
-for i in range(72) :
-    for_glo = 0
-    for j in range(34) : 
-        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az[i],
+Fn_SKN = np.zeros((36))
+food_NN = torch.zeros(37, device = device, dtype = type)
+for j in range(36) : 
+        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az,
                                             yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
         
-        for_loc,_,_,_ = solver_yaw.solve(rotor.sections[j], az[i], pitch = pitch,
+        food_NN[j],_,_,_ = solver_yaw.solve(rotor.sections[j], az, pitch = pitch,
                                           velocity = velocities, angles = [yaw, tiltAngle])
-        for_glo += for_loc ; for_loc = 0
-    T = torch.tensor([for_glo, az[i]], dtype = type, device = device)
-    Fn_SKN[i] = T800(T).to('cpu').detach().numpy()[0]
-
-_,Fn_Vortex,_ = brain.extract_line(path, element[0])
-azs_vortex = np.linspace(0, 360, 72, endpoint=False)
-azs = np.degrees(azs)
+food_NN[36] = az
+Fn_SKN = T800(food_NN).to('cpu').detach().numpy()
 
 
+
+
+radius = brain.extract_rad("data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv")
 plt.subplot(1,1,1)
-plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
-plt.plot(azs, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
-plt.plot(azs_vortex, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
+#plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
+plt.plot(radius, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
+plt.plot(radius, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
 plt.legend()
 plt.grid()
 
