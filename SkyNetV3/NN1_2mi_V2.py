@@ -58,8 +58,9 @@ samp_size = 72 ; batch_size = 9
 """
 Construire les features : 
     - Un vecteur de taille 34 qui contient les efforts de la bem (corrigées par yaw ou non)
-    - Une deuxième qui contient l'azimut (en degré) sur lequel la somme des forces est calculée.  
+    - Une deuxième qui contient l'azimut (en radian) sur lequel la somme des forces est calculée.  
 """
+
 path = 'data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv'
 az,_,_ = brain.extract_line(path, 1)
 
@@ -76,7 +77,7 @@ for i in range(72) :
 
 """
 Construire les labels :
-    - La force calculées par le vortex (issu de la feuille ..\ data_vortex_yaw_mexico\data_vortex_mexico_tsr004_yaw005_fn.csv)
+    - La force calculées par le vortex (issu de la feuille ..\\ data_vortex_yaw_mexico\\data_vortex_mexico_tsr004_yaw005_fn.csv)
 """
 
 L = torch.zeros(samp_size, 36)
@@ -85,12 +86,10 @@ for i in range(72) :
 
 train_dataloader, val_dataloader = brain.data_organisation(F,L, batch_size=batch_size, test_size = 0.8, dtype = type)
 
-k = 0
-for f in train_dataloader :
-    k+=1
-k = 0
-for l in val_dataloader :
-    k+=1
+val_azimuth = []
+for l in val_dataloader : 
+    for j in range(len(l[0])) :
+        val_azimuth.append(l[0][j][-1])
 
 ## Paramètres du réseaux de neurones
 bias = True
@@ -111,7 +110,7 @@ T800 = brain.SkyNet(ReLU, in_size = in_size, out_size = out_size,
 #######################################################################
 
 LR = 1e-4
-MAX_EPOCH = 150
+MAX_EPOCH = 50
 #Erreur absolue
 loss_train= []
 loss_val = []
@@ -204,7 +203,6 @@ for ep in range(MAX_EPOCH):
         print("Erreur relative : " + str(format(rel_error_val[-1], ".1e")), "\n")
 
 
-fig2 = plt.figure(figsize=(30,30))
 
 corr = [
     bemol.secondary.HubTipLoss.Prandtl,
@@ -223,35 +221,156 @@ element = [17]
 rad = solver_yawed.rotor.sections[element[0]].radius
 
 """
-forces, AI_yawed , azs = solver_yawed.cycle(
-        mexico_vortex.pitchRated, U, omega, angles=[yawAngle, tiltAngle], tStep=0,
-        n_phi=72, N=1, elements=element,
-)
-Fn_BEM = forces[:,0,0]
+Premier test : Tester la capacité du réseau à calculer la distribution des efforts normaux 
+               sur la pale pour un azimut donné (sur lequel il ne s'est pas entraîné)
 """
-Fn_Vortex = brain.extract_column(path, 46)
-az = 4.0143 ## correspond à 230 degré, 46 colonnes dans le tableau (normalement, il n'est pas dans le train_dataloader)
+
+az1 = val_azimuth[3].detach().numpy()  
+az2 = val_azimuth[24].detach().numpy()
+az3 = val_azimuth[40].detach().numpy()
+az4 = val_azimuth[57].detach().numpy()
+AZ_test = [az1, az2, az3, az4]
+
+Fn_Vortex = torch.zeros((36, 4))
+
+Fn_Vortex[:, 0] = brain.extract_column(path, 22) ## 110°
+Fn_Vortex[:, 1] = brain.extract_column(path, 61) ## 305° 
+Fn_Vortex[:, 2] = brain.extract_column(path, 36) ## 180°
+Fn_Vortex[:, 3] = brain.extract_column(path, 46) ## 230°
 
 T800.eval()
-Fn_SKN = np.zeros((36))
+Fn_SKN = np.zeros((36,4))
 food_NN = torch.zeros(37, device = device, dtype = type)
-for j in range(36) : 
-        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = az,
-                                            yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
-        
-        food_NN[j],_,_,_ = solver_yaw.solve(rotor.sections[j], az, pitch = pitch,
-                                          velocity = velocities, angles = [yaw, tiltAngle])
-food_NN[36] = az
-Fn_SKN = T800(food_NN).to('cpu').detach().numpy()
+for i in range(4) :
+    for j in range(36) : 
+            velocities = tools.calculateVelocity(wind = U, omega = omega, rad = rotor.sections[j].radius, azi = AZ_test[i],
+                                                yaw = yaw, tilt = tiltAngle, precone = preconeAngle)
+            
+            food_NN[j],_,_,_ = solver_yaw.solve(rotor.sections[j], AZ_test[i], pitch = pitch,
+                                            velocity = velocities, angles = [yaw, tiltAngle])
+    food_NN[36] = torch.tensor(AZ_test[i], device = device, dtype = type)
+    Fn_SKN[:,i] = T800(food_NN).to('cpu').detach().numpy()
+    food_NN = torch.zeros(37, device = device, dtype = type)
 
 
 
 
 radius = brain.extract_rad("data_vortex_yaw_mexico/data_vortex_mexico_tsr004_yaw005_fn.csv")
-plt.subplot(1,1,1)
-#plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
-plt.plot(radius, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
-plt.plot(radius, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
+
+fig = plt.figure(figsize=(10, 10))
+fig.suptitle("Distribution des efforts normaux à azimut fixé (SkyNet vs Vortex)")
+
+plt.subplot(2,2,1)
+plt.plot(radius, Fn_SKN[:,0], color = 'red', label = 'Fn-SkyNet')
+plt.plot(radius, Fn_Vortex[:,0], color = 'blue', label = 'Fn-Vortex')
+plt.title('Azimut à 110°')
+plt.xlabel('rayon')
+plt.ylabel('Force normale')
+plt.legend()
+plt.grid()
+
+plt.annotate(f"Erreur (relative) sur la distribution : {np.linalg.norm(Fn_SKN[:,0] - Fn_Vortex[:,0].numpy())/np.linalg.norm(Fn_Vortex[:,0].numpy()):.2e}",
+             xy=(0.5, -0.25), xycoords='axes fraction',
+             ha='center', fontsize=12)
+
+
+plt.subplot(2,2,2)
+plt.plot(radius, Fn_SKN[:,1], color = 'red', label = 'Fn-SkyNet')
+plt.plot(radius, Fn_Vortex[:,1], color = 'blue', label = 'Fn-Vortex')
+plt.title('Azimut à 305°')
+plt.xlabel('rayon')
+plt.ylabel('Force normale')
+plt.legend()
+plt.grid()
+plt.annotate(f"Erreur (relative) sur la distribution : {np.linalg.norm(Fn_SKN[:,1] - Fn_Vortex[:,1].numpy())/np.linalg.norm(Fn_Vortex[:,1].numpy()):.2e}",
+             xy=(0.5, -0.25), xycoords='axes fraction',
+             ha='center', fontsize=12)
+
+plt.subplot(2,2,3)
+plt.plot(radius, Fn_SKN[:,2], color = 'red', label = 'Fn-SkyNet')
+plt.plot(radius, Fn_Vortex[:,2], color = 'blue', label = 'Fn-Vortex')
+plt.title('Azimut à 180°')
+plt.xlabel('rayon')
+plt.ylabel('Force normale')
+plt.legend()
+plt.grid()
+plt.annotate(f"Erreur (relative) sur la distribution : {np.linalg.norm(Fn_SKN[:,2] - Fn_Vortex[:,2].numpy())/np.linalg.norm(Fn_Vortex[:,2].numpy()):.2e}",
+             xy=(0.5, -0.25), xycoords='axes fraction',
+             ha='center', fontsize=12)
+
+plt.subplot(2,2,4)
+plt.plot(radius, Fn_SKN[:,3], color = 'red', label = 'Fn-SkyNet')
+plt.plot(radius, Fn_Vortex[:,3], color = 'blue', label = 'Fn-Vortex')
+plt.title('Azimut à 230°')
+plt.xlabel('rayon')
+plt.ylabel('Force normale')
+plt.legend()
+plt.grid()
+plt.annotate(f"Erreur (relative) sur la distribution : {np.linalg.norm(Fn_SKN[:,3] - Fn_Vortex[:,3].numpy())/np.linalg.norm(Fn_Vortex[:,3].numpy()):.2e}",
+             xy=(0.5, -0.25), xycoords='axes fraction',
+             ha='center', fontsize=12)
+
+plt.subplots_adjust(hspace=0.4)
+plt.show()
+
+
+"""
+Deuxième test :  Avec ce modèle, tester son calcul des distributions des forces 
+                 à élément fixé sur une révolution complète.
+                 C'est l'occasion de tester sa perf sur la BEM.
+"""
+
+azimuthAngle = 0.0
+preconeAngle = 0.0
+tiltAngle = 0.0
+skewAngle = np.radians(5.)
+yawAngle = skewAngle
+element = [24]
+
+## Forces calculées par la BEM native
+forces, AI_yawed , azs = solver_yawed.cycle(
+        mexico_vortex.pitchRated, U, omega, angles=[yawAngle, tiltAngle], tStep=0,
+        n_phi=72, N=1, elements=element,
+)
+Fn_BEM = forces[:,0,0]
+
+## Forces Vortex pour l'éléments 24 ~ ?
+_,Fn_Vortex,_ = brain.extract_line(path, 24)
+
+T800.eval()
+Fn_SKN = np.zeros((72,))
+NN_FN_out = []
+for i in range(len(azs)) : 
+    food_NN = torch.zeros(37, device = device, dtype = type)
+    for j in range(36) :
+        velocities = tools.calculateVelocity(wind = U, omega = omega, rad = solver_yawed.rotor.sections[j].radius,
+                                            azi = azs[i],
+                                            yaw = yaw, tilt = tiltAngle, 
+                                            precone = preconeAngle)
+        
+        food_NN[j],_,_,_ = solver_yaw.solve(solver_yawed.rotor.sections[j],
+                                        azs[i], pitch = pitch, velocity=velocities,
+                                        angles = [yaw, tiltAngle])
+    food_NN[36] = azs[i]
+    FN_dis = T800(food_NN).to('cpu').detach().numpy()
+    Fn_SKN[i] = FN_dis[24]
+
+fig_test2 = plt.figure(figsize = (10,10))
+plt.suptitle("Effort sur un élément à travers une révolution")
+
+plt.subplot(1,2,1)
+plt.plot(azs, Fn_BEM, color = 'green', label = 'Fn-BEM')
+plt.plot(azs, Fn_SKN, color = 'red', label = 'Fn-SkyNet')
+plt.plot(azs, Fn_Vortex, color = 'blue', label = 'Fn-Vortex')
+plt.title("Distribution des efforts sur un élément au cour d'une révolution")
+plt.legend()
+plt.grid() 
+
+err_SKN_Vortex = np.abs(Fn_Vortex - Fn_SKN)
+plt.subplot(1,2,2)
+plt.plot(azs, err_SKN_Vortex)
+plt.title("Erreur sur le calcul de la distribution")
+plt.xlabel("azimut (en degré)")
 plt.legend()
 plt.grid()
 

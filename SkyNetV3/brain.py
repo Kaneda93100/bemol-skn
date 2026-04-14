@@ -23,19 +23,7 @@ class SkyNet(nn.Module) :
     deepness : int #Profondeur du réseau
     device : str #CPU ou GPU
     type : str #format des données manipulées
-    """    
-    def __init__(self,in_size:int, out_size:int, layer_size:int, bias:bool, deepness:int, type = data_type) : 
-        
-        Constructeur par défaut d'un objet sans architecture.
 
-        
-        self.bias = bias
-        self.in_size = in_size
-        self.out_size = out_size
-        self.layer_size = layer_size
-        self.deepness = deepness
-        
-    """
     def __init__(self,act, in_size:int, out_size:int, layer_size:int, bias:bool, deepness:int, device:str, type:str):
         """
         Constructeur de l'architecture du réseau.
@@ -67,6 +55,17 @@ class SkyNet(nn.Module) :
         Initialisation des paramètres (poids et biais) d'un réseau de neurones. 
         Si un entraînement à eu lieu précédemment, alors ce sont ces paramètres qui sont prit, 
         sinon ils sont initialisé aléatoirement.
+
+        input :
+           - path (str)         --> chemin vers le jeu de paramètre
+           - samp_size (int)    --> nombre de donné utilisée pour l'entraînement
+           - transfert (bool)   --> savoir si on active l'apprentissage par transfert
+           - random_init (bool) --> si on veut malgré tout faire un init aléatoire
+
+        output : 
+           - file_param (str)   --> chemin menant au jeu de paramètre qui seront, soit écrasé soit créé, soit inchangé
+           - init_random (bool) --> booléen indiquant si l'initialisation à été aléatoire ou non
+
         """
 
         if transfert == True and random_init == False:
@@ -109,52 +108,6 @@ class SkyNet(nn.Module) :
                 print("Aucun jeu de paramètre n'a été trouvé. Le réseau est initialisé aléatoirement.\n")
                 return None, True
         
-    """
-    def train_NN1(self, MAX_EPOCH = 10, LR = 1e-3,) : 
-        loss_train= []
-        loss_val = []
-        rel_error_train = []
-        rel_error_val = []
-        grad_norm = []
-        optimiser = optim.Adam(self.parameters(), lr = LR, weight_decay=1)
-        loss_func = nn.MSELoss(reduction = 'mean')
-        param_saved = [self.state_dict(), 0]
-
-        #Gestion de l'affichage 
-        step  = 1 #étape à afficher dans le terminal
-        tronc = 5 #ordre de la troncature pour err_min_train et err_min_val
-        tol = 1e-7 #seuil de tolérance pour l'erreur faite sur les données d'entraînement ET de validation
-
-
-        print("Début de l'entraînement\n")
-        perf_av = []
-        start = perf_counter()
-        for ep in range(MAX_EPOCH):
-            self.train()
-            
-            if ep % step == 0 :
-                print("Etape "+str(ep + 1)+" sur " + str(MAX_EPOCH) + "\n")
-            
-            loss_train_int = list()
-            rel_err_int = []
-            
-            perf_loc = []
-            for features, label in train_dataloader :
-                start_train = perf_counter()
-
-                features = features.to(device)
-                label = label.to(device)
-
-                optimiser.zero_grad()
-
-                label = label.squeeze(2).squeeze(1).type(torch.float32)
-                AI_NN = T800(features).squeeze(2).squeeze(1)
-                Ux, Uy = compute_velocity(wind = U, omega = omega,
-                                        rad = features[:,0,1], azimuth = features[:,0,0],
-                                        yaw=yaw, tilt=tiltAngle, precone=preconeAngle
-                                        )
-        return 0          
-    """ 
     
     def save_param(self, path:str, save:bool) : 
         """
@@ -163,9 +116,10 @@ class SkyNet(nn.Module) :
         if save == True : 
             torch.save(self.state_dict(), path)
             print("Paramétrage enregistré à l'adresse " , path)
+            return 0
         else : 
             print("Aucun paramètre n'a été enregistré.")
-        return 0
+        return -1
     
     def forward(self,x) :
         """
@@ -242,7 +196,7 @@ def extract_column(path:str, num_col:int, dtype = data_type) :
         row = next(line)
         Y = torch.zeros(36, dtype = dtype)    
         for i in range(36) :
-            Y[i] = float(row[num_col])
+            Y[i] = float(row[num_col+1])
             if(i == 35) : 
                 break
             row = next(line)
@@ -292,7 +246,7 @@ def extract_rad(path:str, type = data_type):
 
     return R_r
 
-def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pin_memory=False, shuffle=True) : 
+def data_organisation(X,Y, batch_size:int, dtype = data_type, test_size = 0.5, pin_memory=False, shuffle=True, seed = torch.manual_seed(42)) : 
 
     if type(X) == torch.Tensor and type(Y) == torch.Tensor :
         x_train, x_val , y_train, y_val = train_test_split(X,Y, random_state = 3, shuffle = True, test_size = test_size)
@@ -310,7 +264,7 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pi
     train_dataloader = DataLoader(TensorDataset(x_train, y_train),
                                                  batch_size = batch_size,
                                                  pin_memory = pin_memory,
-                                                 shuffle = shuffle
+                                                 shuffle = True
                                                 )
     k = 0
     for t in train_dataloader : 
@@ -320,7 +274,7 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pi
     val_dataloader = DataLoader(TensorDataset(x_val, y_val),
                                                  batch_size = batch_size,
                                                  pin_memory = pin_memory,
-                                                 shuffle = shuffle
+                                                 shuffle = True
                                                 )
     k = 0 
     for t in val_dataloader : 
