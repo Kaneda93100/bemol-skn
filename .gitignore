@@ -3,6 +3,6 @@
 *_results
 images
 data_vortex_yaw_mexico
-skynet_env
+skynet_venv
 *.pt2
 *.png
