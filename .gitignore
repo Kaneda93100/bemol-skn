@@ -4,5 +4,6 @@
 images
 data_vortex_yaw_mexico
 skynet_venv
+skn_venv
 *.pt2
 *.png
