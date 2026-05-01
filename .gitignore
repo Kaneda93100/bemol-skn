@@ -7,3 +7,6 @@ skynet_venv
 skn_venv
 *.pt2
 *.png
+/Analyse des profils/figs/*
+/Analyse des profils/CL/*
+/Analyse des profils/CD/*
