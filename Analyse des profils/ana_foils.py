@@ -155,8 +155,8 @@ print(f"\nFoils vor cl : {list(al_met_cl_vor.keys())}\n")
 print(f"\nFoils def cd : {list(al_met_cd_def.keys())}\n")
 print(f"\nFoils def cl : {list(al_met_cl_def.keys())}\n")
 """
-tol = 1e-1
-## Identifier les Cd communs (ou les plus proches)/np.linalg.norm(al_met_cd_vor[key_AF].to_numpy()) 
+
+## Identifier les Cd communs (ou les plus proches)
 foils_cd_shared   = {}
 key_vor = None
 key_default = None
@@ -170,15 +170,6 @@ for key_AF in list(al_met_cd_vor.keys()):
             key_default = key_def
             min = np.linalg.norm(al_met_cd_vor[key_AF].to_numpy() - al_met_cd_def[key_def].to_numpy())/np.linalg.norm(al_met_cd_def[key_def].to_numpy())
     foils_cd_shared.update({key_vor : key_default})        
-
-"""
-for key_AF in list(al_met_cd_vor.keys()):  ## Parcourir les profil AF
-    for key_def in list(al_met_cd_def.keys()):
-        if key_def in ['Cylinder', 'Tower']:
-            continue
-        if np.linalg.norm(al_met_cd_vor[key_AF].to_numpy() - al_met_cd_def[key_def].to_numpy())/np.linalg.norm(al_met_cd_def[key_def].to_numpy()) < atol :
-            foils_cd_shared.update({key_AF : key}) 
-"""
 
 ## Identifier les Cl communs (ou les plus proches)
 foils_cl_shared   = {}
@@ -194,15 +185,6 @@ for key_AF in list(al_met_cl_vor.keys()):
             key_default = key_def
             min = np.linalg.norm(al_met_cl_vor[key_AF].to_numpy() - al_met_cl_def[key_def].to_numpy())/np.linalg.norm(al_met_cl_def[key_def].to_numpy())
     foils_cl_shared.update({key_vor : key_default})    
-"""
-for key_AF in list(al_met_cl_vor.keys()): 
-    for key_def in list(al_met_cl_def.keys()):
-        if key_def in ['Cylinder', 'Tower']:
-            continue
-        if np.linalg.norm(al_met_cl_vor[key_AF] - al_met_cl_def[key_def])/np.linalg.norm(al_met_cl_def[key_def].to_numpy())  < atol :
-            foils_cl_shared.update({key_AF : key}) 
-"""
-
 
 
 for key, value in foils_cd_shared.items() : 

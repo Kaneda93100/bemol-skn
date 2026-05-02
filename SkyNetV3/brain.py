@@ -294,7 +294,6 @@ def extract_rad(path:str, type = data_type):
     R_r = np.array(R, dtype = np.float64)
 
     return R_r
-
 def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pin_memory=False, shuffle=True) : 
 
     if type(X) == torch.Tensor and type(Y) == torch.Tensor :
@@ -331,6 +330,8 @@ def data_organisation(X,Y, batch_size:int, dtype = data_type,test_size = 0.5, pi
     print("Nombre d'éléments dans le val_dataloader : ", k)
     return train_dataloader, val_dataloader
 
+
+
 class autodiff_interp :
     def __init__(self, x, y, device='cpu'):
         self.x = torch.as_tensor(x, dtype = torch.float64, device = device)
@@ -346,7 +347,6 @@ class autodiff_interp :
         p = (self.y[id_x + 1] - self.y[id_x])/(self.x[id_x+1] - self.x[id_x])
 
         return p*(x_new - self.x[id_x+1]) + self.y[id_x+1]
-
 def dicho_ad(f,init,eps = 1e-12, iter_max = 500, device ='cpu') :
     a = init[0]
     b = init[1]
@@ -361,7 +361,6 @@ def dicho_ad(f,init,eps = 1e-12, iter_max = 500, device ='cpu') :
             break
     root = torch.tensor((a+b)/2, device = device, requires_grad = True)
     return root
-
 def brent_dekker_ad(f, a,b, type = torch.float64, eps = 1e-8, iter_max = 1000, device = 'cpu') : 
     a = torch.as_tensor(a, dtype= type, device = device); b = torch.as_tensor(b, dtype = type, device = device)
     prec = a.clone()
@@ -385,7 +384,6 @@ def brent_dekker_ad(f, a,b, type = torch.float64, eps = 1e-8, iter_max = 1000, d
     image = f(root)
     image.backward()
     return root
-
 def Newton_autodiff(f, x0:float, device = 'cpu',eps = 1e-12, iter_max = 500):
     x = torch.tensor(x0, dtype = torch.float32, device=device, requires_grad=True).unsqueeze(0)
     x.retain_grad()
@@ -414,7 +412,6 @@ def Newton_autodiff(f, x0:float, device = 'cpu',eps = 1e-12, iter_max = 500):
     y = f(x_final)
     y.backward()
     return x_final, 1/x_final.grad
-
 def print_graph(fn, f):
     if fn is None:
         return

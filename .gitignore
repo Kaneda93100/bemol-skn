@@ -10,3 +10,5 @@ skn_venv
 /Analyse des profils/figs/*
 /Analyse des profils/CL/*
 /Analyse des profils/CD/*
+*.xlsx
+*.csv

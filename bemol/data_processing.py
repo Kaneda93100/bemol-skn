@@ -275,3 +275,12 @@ def compute_velocity(wind, omega, rad, azimuth, yaw, tilt, precone) :
 
 def Apply_corr(x,y) :
     return x*y
+
+def compute_inflow_aoa(solver, Ux, Uy, angle):
+        uxRelative = Ux * (1.0 - solver._axial_induction)
+        uthetaRelative = Uy * (1.0 + solver._tangential_induction)
+        inflowAngle = np.arctan2(uxRelative, uthetaRelative)
+
+        attackAngle = inflowAngle - angle
+
+        return inflowAngle, attackAngle
