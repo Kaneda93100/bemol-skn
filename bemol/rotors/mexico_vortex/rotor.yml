@@ -1,20 +1,6 @@
-
-# definition of rotor properties
-
-# number of blades
+hubRadius: 0.21
 nBlades: 3
-
-# hub radius, m
-hubRadius: 0.210
-
-# tip radius, m
-tipRadius: 2.250
-
-# wind speed at rated, m/s
-windRated: 15.06
-
-# angular velocity at rated, rad/s
 omegaRated: 44.5163679
-
-# blade pitch at rated, radians
-pitchRated: -0.040143
+pitchRated: 0.040143
+tipRadius: 2.25
+windRated: 15.06
