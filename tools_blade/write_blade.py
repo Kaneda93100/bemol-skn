@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import yaml
 
+import scipy as sp
+from scipy import optimize
+import bemol as bem
+
 def rewrite_geom(path:P.Path, attribut:str, y:np.array, lbd:float = 1.):
 
     """
@@ -25,7 +29,7 @@ def rewrite_geom(path:P.Path, attribut:str, y:np.array, lbd:float = 1.):
     ## Modification de l'attribut
     data_blade[attribut] *= lbd
     data_blade[attribut] += y
-    data_blade.to_csv(path, sep = '\t', header=True)
+    data_blade.to_csv(path, sep = ' ', header=True, index=False)
 
     print(f"\nLe fichier {path} à bien été modifié. Tâche terminée !\n")
 
@@ -42,3 +46,4 @@ def rewrite_pitch(path:P.Path, new_pitch):
 
     print(f"\nLe fichier {path} à bien été modifié (l'attribut pitchRated). Tâche terminée !\n")
     return
+

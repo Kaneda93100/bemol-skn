@@ -13,11 +13,12 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import bemol
+import bemol as bem
 from bemol.rotor import Rotor
 
 import numpy as np
 import scipy as sp
+from scipy import optimize
 
 #Rotor par défaut
 mex_rotor = Rotor("bemol/rotors/mexico")
@@ -30,8 +31,8 @@ wind = 15.06 ##CF mexico/rotor.yml
 omega = 44.5163679 ##CF mexico/rotor.yml
 pitch = -0.040143 ##CF mexico/rotor.yml
 
-HR = bemol.rotor.mexico.hubRadius
-TR = bemol.rotor.mexico.tipRadius
+HR = bem.rotor.mexico.hubRadius
+TR = bem.rotor.mexico.tipRadius
 default_radius =  mex_rotor.radius[24]
 print(default_radius)
 
@@ -120,7 +121,7 @@ def compute_AI (solver, az:float, yaw:float, tilt = 0.0, element = [24], precone
     funDrag = section.airfoil.cd
     funLift = section.airfoil.cl
 
-    Ux, Uy = bemol.tools.calculateVelocity(wind, omega, radius, az, yaw, tilt, precone)
+    Ux, Uy = bem.tools.calculateVelocity(wind, omega, radius, az, yaw, tilt, precone)
     
     solver.update(
         Ux = Ux, Uy = Uy, 
@@ -284,3 +285,52 @@ def compute_inflow_aoa(solver, Ux, Uy, angle):
         attackAngle = inflowAngle - angle
 
         return inflowAngle, attackAngle
+
+def AI_ning_alg(solver:bem.ning.NingUncoupled, sect:int, wind:float, omega:float, pitch:float, precone:float, tilt:float, yaw:float, azimuth:float):
+        
+        section = solver.rotor[sect]
+
+        Ux, Uy = bem.tools.calculateVelocity(wind = wind, omega = omega, rad = section.radius, azi = azimuth, yaw = yaw, tilt = tilt, precone = precone)
+        solver._axial_induction = 0.0
+        solver._tangential_induction = 0.0
+
+        angle = section.twist + pitch
+        chord = section.chord
+        radius = section.radius
+        funDrag = section.airfoil.cd
+        funLift = section.airfoil.cl
+
+        # update the flow state before calculating the residuals
+        solver.update(
+            Ux=Ux,Uy=Uy,
+            angle=angle,funLift=funLift,funDrag=funDrag,
+            chord=chord,radius=radius,
+            )
+        
+        residualEpsilon = solver.residuals(solver.epsilon)
+        residualPiOvTwo = solver.residuals(bem.ning.PI_HALF)
+
+        if residualEpsilon * residualPiOvTwo < 0.0:
+            inflowAngle = optimize.brentq(solver.residuals, solver.epsilon,bem.ning.PI_HALF,)
+        else:
+            residualMinusEpsilon = solver.residuals(-solver.epsilon)
+            residualMinPiOvFour = solver.residuals(-bem.ning.PI_QUARTER)
+
+            if residualMinusEpsilon*residualMinPiOvFour < 0.0:
+                # propeller break region
+                inflowAngle = optimize.brentq(
+                    solver.residuals,-bem.ning.PI_QUARTER,-solver.epsilon,
+                    )
+            else:
+                inflowAngle = optimize.brentq(
+                    solver.residuals, bem.ning.PI_HALF, bem.ning.PI - solver.epsilon,
+                    )
+                
+        wakeSkewAngle = solver.corrections.skewAngle(solver._axial_induction,yaw)
+        solver._axial_induction = solver.corrections.yawModel(solver._axial_induction,wakeSkewAngle,azimuth,radius,
+                                                              solver.rotor.hubRadius,solver.rotor.tipRadius)
+        uxRelative = Ux * (1.0 - solver._axial_induction)
+        uthetaRelative = Uy * (1.0 + solver._tangential_induction)
+        inflowAngle = np.arctan2(uxRelative, uthetaRelative)
+   
+        return solver._axial_induction, inflowAngle

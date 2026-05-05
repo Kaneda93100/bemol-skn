@@ -6,6 +6,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import os
 import yaml 
+import write_blade as wb
 
 path_blade_vor = p.Path('/home/arthur/Documents/GitHub/bemol-skn/bemol/rotors/mexico_vortex/blade.dat')
 temp = pd.read_csv(path_blade_vor, sep = '\s+', names = ['radius', 'twist', 'chord', 'airfoil'], header = 0)

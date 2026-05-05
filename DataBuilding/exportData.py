@@ -1,7 +1,6 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-BASE = os.path.dirname(os.path.abspath(__file__))
 
 import pathlib as p
 import numpy as np
@@ -66,7 +65,7 @@ for i in range(36) : # Azimuts
         Data[i,j,8] = fn
         Data[i,j,9] = ft
 
-xlsx_data = pd.read_excel('DataBuilding/forces_BEM_Yaw (2).xlsx')
+xlsx_data = pd.read_excel('DataBuilding/forces_BEM_Yaw.xlsx')
 
 az1 = 0        # azimut == 0
 az2 = 36*4     # azimut == 40
@@ -76,8 +75,8 @@ phi_old1 = xlsx_data['phi (angle relatif)'].to_numpy()[az1:(az1+36)]
 phi_old2 = xlsx_data['phi (angle relatif)'].to_numpy()[az2:(az2+36)]
 phi_old3 = xlsx_data['phi (angle relatif)'].to_numpy()[az3:(az3+36)]
 
-plt.plot(phi_old1, label = 'phi old')
-plt.plot(Data[0,:,7], label = 'phi new')
+plt.plot(phi_old3, label = 'phi old')
+plt.plot(Data[10,:,7], label = 'phi new')
 plt.legend()
 plt.grid()
 plt.show()
