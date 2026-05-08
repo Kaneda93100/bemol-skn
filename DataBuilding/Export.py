@@ -60,7 +60,7 @@ U = 12.520228472 # Incoming stream's velocity
 rho = 1.191 
 
 ## Charger le rotor
-pitch = 0.040143
+pitch = -0.040143
 #wb.rewrite_geom(path = 'bemol/rotors/mexico_vortex/blade.dat', attribut = 'twist', y = np.zeros((36)), lbd = -1.)
 rotor = bemol.rotor.Rotor('/home/arthur/Documents/GitHub/bemol-skn/bemol/rotors/mexico_vortex')
 
@@ -177,8 +177,6 @@ for i in range(36) : # Azimuts
         Data[i,j,7] = np.degrees(phi)
         Data[i,j,8] = fn
         Data[i,j,9] = ft
-wb.rewrite_geom(path = 'bemol/rotors/mexico_vortex/blade.dat', attribut = 'twist', y = np.zeros((36)), lbd = -1.) # Remettre le signe de départ sur les twists
-
 
 ## Exporter vers .xlsx
 sheet = op.Workbook()
