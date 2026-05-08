@@ -164,7 +164,7 @@ for i in range(36) : # Azimuts
         
         angle = rotor.sections[j].twist + pitch
         phi, aoa = DP.compute_inflow_aoa(solver, velocities[0], velocities[1], angle)
-        V_eff = np.sqrt((U*(1-ai)**2 + (omega*rotor.sections[j].radius*(1+at)**2)))                            
+        V_eff = np.sqrt((U*(1-ai))**2 + (omega*rotor.sections[j].radius*(1+at))**2)                             
 
 
         Data[i,j,0] = rotor.sections[j].radius
