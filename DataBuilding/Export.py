@@ -60,12 +60,12 @@ U = 12.520228472 # Incoming stream's velocity
 rho = 1.191 
 
 ## Charger le rotor
-pitch = -0.040143
-wb.rewrite_geom(path = 'bemol/rotors/mexico_vortex/blade.dat', attribut = 'twist', y = np.zeros((36)), lbd = -1.)
+pitch = 0.040143
+#wb.rewrite_geom(path = 'bemol/rotors/mexico_vortex/blade.dat', attribut = 'twist', y = np.zeros((36)), lbd = -1.)
 rotor = bemol.rotor.Rotor('/home/arthur/Documents/GitHub/bemol-skn/bemol/rotors/mexico_vortex')
 
 #####################################################################################################
-##                          DONNÉEs : YAW ON                                                       ##
+###                          DONNÉEs : YAW ON                                                     ###
 #####################################################################################################
 
 ## Initialiser le solveur BEM
@@ -94,7 +94,7 @@ for i in range(36) : # Azimuts
         
         angle = rotor.sections[j].twist + pitch
         phi, aoa = DP.compute_inflow_aoa(solver, velocities[0], velocities[1], angle)
-        V_eff = np.sqrt((U*(1-ai)**2 + (omega*rotor.sections[j].radius*(1+at)**2)))                            
+        V_eff = np.sqrt((U*(1-ai))**2 + (omega*rotor.sections[j].radius*(1+at))**2)                            
 
 
         Data[i,j,0] = rotor.sections[j].radius
@@ -107,7 +107,6 @@ for i in range(36) : # Azimuts
         Data[i,j,7] = np.degrees(phi)
         Data[i,j,8] = fn
         Data[i,j,9] = ft
-wb.rewrite_geom(path = 'bemol/rotors/mexico_vortex/blade.dat', attribut = 'twist', y = np.zeros((36)), lbd = -1.) # Remettre le signe de départ sur les twists
 
 
 ## Exporter vers .xlsx
@@ -118,17 +117,18 @@ attr = ['r', 'theta', 'yaw', 'TSR', 'V_eff', 'alpha', 'a', 'phi', 'Fn', 'Ft']
 for ind, at in enumerate(attr, start = 1) :
     write.cell(row = 1, column = ind, value = at) 
 
-for i in range(36,) : # azimuth
+for i in range(36) : # azimuth
     for j in range(36) : # radius
-        write.cell(row = (i+1) + (j+1), column = 1, value = Data[i,j,0]) # radius   A
-        write.cell(row = (i+1) + (j+1), column = 2, value = Data[i,j,1]) # azimuth  B
-        write.cell(row = (i+1) + (j+1), column = 3, value = Data[i,j,2]) # yaw      C
-        write.cell(row = (i+1) + (j+1), column = 4, value = Data[i,j,3]) # TSR      D
-        write.cell(row = (i+1) + (j+1), column = 5, value = Data[i,j,4]) # V_eff    E
-        write.cell(row = (i+1) + (j+1), column = 6, value = Data[i,j,5]) # aoa      F
-        write.cell(row = (i+1) + (j+1), column = 7, value = Data[i,j,6]) # ai       G
-        write.cell(row = (i+1) + (j+1), column = 8, value = Data[i,j,7]) # fn       H
-        write.cell(row = (i+1) + (j+1), column = 9, value = Data[i,j,8]) # ft       I
+        write.cell(row = 36*i + (j+2), column = 1, value = Data[i,j,0])  # radius   A
+        write.cell(row = 36*i + (j+2), column = 2, value = Data[i,j,1])  # azimuth  B
+        write.cell(row = 36*i + (j+2), column = 3, value = Data[i,j,2])  # yaw      C
+        write.cell(row = 36*i + (j+2), column = 4, value = Data[i,j,3])  # TSR      D
+        write.cell(row = 36*i + (j+2), column = 5, value = Data[i,j,4])  # V_eff    E
+        write.cell(row = 36*i + (j+2), column = 6, value = Data[i,j,5])  # aoa      F
+        write.cell(row = 36*i + (j+2), column = 7, value = Data[i,j,6])  # ai       G
+        write.cell(row = 36*i + (j+2), column = 8, value = Data[i,j,7])  # phi      H
+        write.cell(row = 36*i + (j+2), column = 9, value = Data[i,j,8])  # fn       I
+        write.cell(row = 36*i + (j+2), column = 10, value = Data[i,j,9]) # ft       J
 
 sheet.save('DataBuilding/BEM_data_YAW_on.xlsx')
 
@@ -136,7 +136,7 @@ solver = None
 corrections = None
 
 #####################################################################################################
-##                         DONNÉEs : YAW OFF                                                       ##
+##                         DONNÉES : YAW OFF                                                       ##
 #####################################################################################################
 ## Initialiser le solveur BEM
 yaw = 0.
@@ -190,15 +190,16 @@ for ind, at in enumerate(attr, start = 1) :
 
 for i in range(36,) : # azimuth
     for j in range(36) : # radius
-        write.cell(row = (i+1) + (j+1), column = 1, value = Data[i,j,0]) # radius   A
-        write.cell(row = (i+1) + (j+1), column = 2, value = Data[i,j,1]) # azimuth  B
-        write.cell(row = (i+1) + (j+1), column = 3, value = Data[i,j,2]) # yaw      C
-        write.cell(row = (i+1) + (j+1), column = 4, value = Data[i,j,3]) # TSR      D
-        write.cell(row = (i+1) + (j+1), column = 5, value = Data[i,j,4]) # V_eff    E
-        write.cell(row = (i+1) + (j+1), column = 6, value = Data[i,j,5]) # aoa      F
-        write.cell(row = (i+1) + (j+1), column = 7, value = Data[i,j,6]) # ai       G
-        write.cell(row = (i+1) + (j+1), column = 8, value = Data[i,j,7]) # fn       H
-        write.cell(row = (i+1) + (j+1), column = 9, value = Data[i,j,8]) # ft       I
+        write.cell(row = 36*i + (j+2), column = 1, value = Data[i,j,0])  # radius   A
+        write.cell(row = 36*i + (j+2), column = 2, value = Data[i,j,1])  # azimuth  B
+        write.cell(row = 36*i + (j+2), column = 3, value = Data[i,j,2])  # yaw      C
+        write.cell(row = 36*i + (j+2), column = 4, value = Data[i,j,3])  # TSR      D
+        write.cell(row = 36*i + (j+2), column = 5, value = Data[i,j,4])  # V_eff    E
+        write.cell(row = 36*i + (j+2), column = 6, value = Data[i,j,5])  # aoa      F
+        write.cell(row = 36*i + (j+2), column = 7, value = Data[i,j,6])  # ai       G
+        write.cell(row = 36*i + (j+2), column = 8, value = Data[i,j,7])  # phi      H
+        write.cell(row = 36*i + (j+2), column = 9, value = Data[i,j,8])  # fn       I
+        write.cell(row = 36*i + (j+2), column = 10, value = Data[i,j,9]) # ft       J
 
 sheet.save('DataBuilding/BEM_data_YAW_off.xlsx')
 
